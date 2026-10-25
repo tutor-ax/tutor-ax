@@ -1,0 +1,41 @@
+{
+  "student": {"id": 900001, "name": "데모 학생", "classes": {"name": "테스트 고1반"}},
+  "weeks": [
+    {"id": 101, "label": "10.7 주간 테스트", "test_date": "10.7", "item_config": null},
+    {"id": 102, "label": "10.14 주간 테스트", "test_date": "10.14", "item_config": null},
+    {"id": 103, "label": "10.21 주간 테스트", "test_date": "10.21", "group_id": "demo-group", "item_config": {"items": [
+      {"key": "word_score", "label": "단어", "max": 25, "cut": 20, "active": true},
+      {"key": "reading_score", "label": "해석", "max": 30, "cut": 20, "active": true},
+      {"key": "mc_score", "label": "객관식", "max": 45, "cut": 25, "active": true},
+      {"key": "item4_score", "label": "영작", "max": 20, "cut": 10, "active": true},
+      {"key": "extra_demo", "label": "추가 어휘", "max": 10, "cut": 5, "active": true}
+    ]}}
+  ],
+  "myScores": [
+    {"week_id": 101, "word_score": 20, "reading_score": 25, "mc_score": 40, "item4_score": null, "total_score": 85, "attendance": true, "no_homework": true, "homework_rate": null, "clinic_memo": ""},
+    {"week_id": 102, "word_score": 0, "reading_score": null, "mc_score": null, "item4_score": null, "total_score": 0, "attendance": false, "no_homework": false, "homework_rate": null, "clinic_memo": "보충 일정 확인 예정 (데모)"},
+    {"week_id": 103, "word_score": 18, "reading_score": 24, "mc_score": 36, "item4_score": 8, "item_scores": {"extra_demo": 7}, "total_score": 93, "attendance": true, "no_homework": false, "homework_rate": 80, "clinic_memo": "목요일 6시 보충\n교사 확인 후 참석 (데모)", "retest_pass": {"word_score": true}}
+  ],
+  "rankScores": [
+    {"week_id": 101, "word_score": 20, "reading_score": 25, "mc_score": 40, "total_score": 85},
+    {"week_id": 102, "word_score": 0, "reading_score": null, "mc_score": null, "total_score": 0},
+    {"week_id": 103, "word_score": 18, "reading_score": 24, "mc_score": 36, "item4_score": 8, "item_scores": {"extra_demo": 7}, "total_score": 93},
+    {"week_id": 104, "word_score": 20, "reading_score": 25, "mc_score": 40, "item4_score": 15, "item_scores": {"extra_demo": 8}, "total_score": 108}
+  ],
+  "groupWeekMap": {"demo-group": [103, 104]},
+  "exams": [
+    {"id": 201, "label": "10월 모의고사", "exam_date": "10.22", "item_config": null},
+    {"id": 202, "label": "미응시 모의고사", "exam_date": "10.15", "item_config": null},
+    {"id": 203, "label": "비대상 시험", "exam_date": "10.23", "item_config": null}
+  ],
+  "myMockScores": [
+    {"exam_id": 201, "score": 88, "absent": false, "memo": "테스트 데이터입니다."},
+    {"exam_id": 202, "score": null, "absent": true}
+  ],
+  "mockRankScores": [
+    {"exam_id": 201, "score": 88},
+    {"exam_id": 201, "score": 92},
+    {"exam_id": 201, "score": 0}
+  ],
+  "mockGroupExamMap": {}
+}

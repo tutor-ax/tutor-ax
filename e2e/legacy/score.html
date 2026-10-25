@@ -1,0 +1,1380 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>용산대성N학원 [영어과] 점수 확인</title>
+
+    <script src="/__test/chart.js"></script>
+    <link rel="stylesheet" href="/__test/theme.css" />
+    <style>
+      .form-group {
+        margin-bottom: 12px;
+      }
+      .form-group label {
+        display: block;
+        font-size: 11px;
+        color: var(--gray);
+        font-weight: 500;
+        margin-bottom: 5px;
+      }
+      .form-group input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        font-size: 16px;
+        font-family: "Noto Sans KR", sans-serif;
+        color: var(--navy);
+        background: var(--cream);
+        outline: none;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+      .form-group input:focus {
+        border-color: var(--accent-ink);
+        box-shadow: 0 0 0 3px rgba(47, 94, 168, 0.15);
+        background: var(--white);
+      }
+      .btn {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        font-family: "Noto Sans KR", sans-serif;
+        cursor: pointer;
+        transition: background-color 0.2s, opacity 0.2s;
+      }
+      .btn-primary {
+        background: var(--navy);
+        color: var(--white);
+      }
+      .btn-primary:hover {
+        background: var(--navy-light);
+      }
+      .btn-secondary {
+        background: var(--light-gray);
+        color: var(--navy);
+        margin-top: 10px;
+      }
+      .error-msg {
+        display: none;
+        background: var(--red-light);
+        border: 1px solid #f5c6c2;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: var(--red);
+        margin-top: 12px;
+        text-align: center;
+      }
+      .error-msg.show {
+        display: block;
+      }
+      .loading {
+        display: none;
+        text-align: center;
+        padding: 28px;
+        color: var(--gray);
+        font-size: 13px;
+      }
+      .loading.show {
+        display: block;
+      }
+      .spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid var(--light-gray);
+        border-top-color: var(--accent-ink);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 10px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      #result-section {
+        display: none;
+      }
+      .student-info {
+        background: var(--navy);
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 14px;
+        position: relative;
+        overflow: hidden;
+      }
+      .student-name {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--white);
+        margin-bottom: 3px;
+      }
+      .student-class {
+        font-size: 12px;
+        color: var(--accent);
+      }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .summary-item {
+        background: var(--white);
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 13px;
+        text-align: center;
+      }
+      .summary-label {
+        font-size: 11px;
+        color: var(--gray);
+        margin-bottom: 4px;
+      }
+      .summary-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--navy);
+      }
+      .chart-wrap {
+        padding: 16px 18px 12px;
+      }
+      .chart-wrap canvas {
+        max-height: 180px;
+      }
+      /* 커트라인 미달 항목 강조 (관리자 화면과 같은 규칙) */
+      .score-item.below-cut {
+        background: var(--red-light);
+        border: 1.5px solid #f5c6c2;
+        padding: 11.5px;
+      }
+      .score-item.below-cut .score-value {
+        color: var(--red);
+      }
+      /* 재시험 표시 */
+      .retest-pass {
+        display: inline-block;
+        margin-top: 3px;
+        padding: 2px 7px;
+        border-radius: 10px;
+        background: var(--green-light);
+        color: var(--green);
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .retest-target {
+        display: inline-block;
+        margin-top: 3px;
+        padding: 2px 7px;
+        border-radius: 10px;
+        background: var(--red-light);
+        color: var(--red);
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .period-select {
+        width: 100%;
+        padding: 11px 38px 11px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        font-size: 14px;
+        font-family: "Noto Sans KR", sans-serif;
+        font-weight: 500;
+        color: var(--navy);
+        background-color: var(--white);
+        /* 기본 화살표 대신 직접 그린 화살표 (브라우저별 모양 통일) */
+        background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%232f5ea8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        background-size: 12px 8px;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .period-select:focus {
+        border-color: var(--accent-ink);
+      }
+      .period-select optgroup {
+        font-size: 12px;
+        color: var(--gray);
+      }
+      .period-select option {
+        font-size: 14px;
+        color: var(--navy);
+      }
+      .score-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      /* 항목 수가 주차마다 다르고 개수 상한이 없으므로(2열 그리드가 알아서 줄바꿈)
+         총점은 항상 한 줄 전체를 차지하게 둔다 */
+      .score-grid .score-item.total {
+        grid-column: 1 / -1;
+      }
+      /* 항목이 1개뿐인 주차는 그 항목도 전체 폭으로 */
+      .score-grid.items-1 .score-item:not(.total) {
+        grid-column: 1 / -1;
+      }
+      .score-item {
+        background: var(--light-gray);
+        border-radius: 12px;
+        padding: 13px;
+      }
+      .score-item.total {
+        grid-column: 1/-1;
+        background: var(--navy);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+      }
+      .score-label {
+        font-size: 11px;
+        color: var(--gray);
+        font-weight: 500;
+        margin-bottom: 5px;
+      }
+      .score-item.total .score-label {
+        color: var(--accent-ink);
+        margin: 0;
+      }
+      .score-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--navy);
+      }
+      .score-item.total .score-value {
+        color: var(--white);
+        font-size: 26px;
+      }
+      .score-max {
+        font-size: 12px;
+        color: var(--gray);
+        font-weight: 400;
+      }
+      .score-item.total .score-max {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 13px;
+      }
+      .meta-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .meta-item {
+        background: var(--white);
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 13px;
+        text-align: center;
+      }
+      .meta-label {
+        font-size: 11px;
+        color: var(--gray);
+        margin-bottom: 3px;
+      }
+      .meta-value {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--navy);
+      }
+      .homework-card {
+        background: var(--white);
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 13px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .homework-label {
+        font-size: 12px;
+        color: var(--gray);
+        font-weight: 500;
+        margin-bottom: 2px;
+      }
+      .homework-rate {
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .homework-eval {
+        font-size: 12px;
+        color: var(--gray);
+        margin-top: 2px;
+        text-align: right;
+      }
+      .notice-card {
+        border-radius: 12px;
+        padding: 13px 16px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .notice-card.warning {
+        background: var(--orange-light);
+        border: 1.5px solid #fad4a8;
+      }
+      .notice-card.danger {
+        background: var(--red-light);
+        border: 1.5px solid #f5c6c2;
+      }
+      .notice-icon {
+        width: 8px;
+        height: 8px;
+        margin-top: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        flex-shrink: 0;
+      }
+      .notice-card.warning {
+        color: var(--orange);
+      }
+      .notice-card.danger {
+        color: var(--red);
+      }
+      .notice-title {
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 3px;
+      }
+      .notice-card.warning .notice-title {
+        color: var(--orange);
+      }
+      .notice-card.danger .notice-title {
+        color: var(--red);
+      }
+      .notice-body {
+        font-size: 12px;
+        line-height: 1.6;
+        color: #555;
+      }
+      ::selection {
+        background: var(--accent-light);
+        color: var(--navy);
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent-ink);
+        outline-offset: 2px;
+      }
+      .score-value,
+      .summary-value,
+      .meta-value,
+      .homework-rate {
+        font-variant-numeric: tabular-nums;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+          animation-duration: 0.01ms !important;
+        }
+      }
+      .empty-msg {
+        text-align: center;
+        padding: 28px;
+        color: var(--gray);
+        font-size: 13px;
+      }
+      footer {
+        width: 100%;
+        text-align: center;
+        padding: 18px;
+        font-size: 11px;
+        color: var(--gray);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>영어과 <span>성적 관리</span></h1>
+      <div class="tab-nav" id="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('scores')">점수 확인</button>
+        <button class="tab-btn" onclick="switchTab('vocab')">단어 공부</button>
+        <button class="tab-btn" onclick="switchTab('passage')">지문 공부</button>
+      </div>
+    </header>
+
+    <div class="container">
+      <div id="login-section">
+        <div class="card">
+          <div class="card-header">
+
+            <h2>학생 로그인</h2>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>학생 이름</label>
+              <input
+                type="text"
+                id="input-name"
+                placeholder="이름을 입력하세요"
+                autocomplete="off"
+                lang="ko"
+                inputmode="text"
+              />
+            </div>
+            <div class="form-group">
+              <label>학부모 연락처 뒷 4자리</label>
+              <input
+                type="password"
+                id="input-pin"
+                placeholder="숫자 4자리"
+                maxlength="4"
+                inputmode="numeric"
+              />
+            </div>
+            <button class="btn btn-primary" onclick="login()">
+              점수 확인하기
+            </button>
+            <div class="error-msg" id="error-msg">
+              이름 또는 PIN이 올바르지 않습니다.
+            </div>
+          </div>
+        </div>
+        <div class="loading" id="login-loading">
+          <div class="spinner"></div>
+          확인 중...
+        </div>
+      </div>
+
+      <div id="result-section">
+        <div class="student-info">
+          <div class="student-name" id="result-name"></div>
+          <div class="student-class" id="result-class"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+
+            <h2>주차 선택</h2>
+          </div>
+          <div class="card-body">
+            <select
+              class="period-select"
+              id="period-select"
+              onchange="onPeriodChange(this.value)"
+            ></select>
+          </div>
+        </div>
+
+        <div id="score-content">
+          <div class="empty-msg">주차를 선택해주세요.</div>
+        </div>
+
+        <div id="mock-score-section" style="display: none"></div>
+
+        <div class="summary-grid" id="summary-grid" style="display: none">
+          <div class="summary-item">
+            <div class="summary-label">누적 평균</div>
+            <div class="summary-value" id="cum-avg">-</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">최고 점수</div>
+            <div class="summary-value" id="cum-best">-</div>
+          </div>
+        </div>
+
+        <div class="card" id="chart-card" style="display: none">
+          <div class="card-header">
+
+            <h2>점수 추이</h2>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="score-chart"></canvas>
+          </div>
+        </div>
+
+        <button class="btn btn-secondary" onclick="logout()">
+          ← 다른 학생 조회
+        </button>
+      </div>
+    </div>
+
+    <footer>© 용산대성N학원 영어과</footer>
+
+    <script>
+      // Production endpoint removed from offline test baseline.
+      // 같은 도메인의 /api/parent-login (vercel.json rewrite → Supabase 함수).
+      // 세션은 HttpOnly 쿠키라서 JS는 토큰을 다루지 않는다.
+      const PARENT_LOGIN_URL = "/__test/parent-login";
+      // 예전 버전이 저장해 둔 PIN 평문 정보를 지운다
+      try { localStorage.removeItem("vocab_auth"); } catch (e) {}
+
+      let currentStudent = null;
+      let currentWeeks = [];
+      let allScores = [];
+      let chartInstance = null;
+      let loginData = null; // parent-login이 반환한 전체 데이터 묶음
+      let weekConfigMap = {}; // { weekId: 정규화된 항목 설정 배열 }
+
+      // ── 주차별 채점 항목 설정 (admin.html과 동일 규약) ──────────
+      // 물리 컬럼이 있는 기본 4슬롯의 key 목록. 5번째 이상 항목은 scores.item_scores(jsonb)에
+      // 들어 있어 itemVal()로 읽는다 — 즉 이 배열은 항목 개수 상한이 아니다.
+      // ※ 오랫동안 이 파일에서 참조가 없는 죽은 코드였으나, 지금은 아래 LEGACY_ITEM_KEYS가
+      //   이 배열을 실제로 사용한다(응답에서 물리 컬럼이 빠졌는지 판정). 지우지 말 것.
+      const ITEM_KEYS = [
+        "word_score",
+        "reading_score",
+        "mc_score",
+        "item4_score",
+      ];
+      // 항목 설정이 없는(기존) 주차에만 적용되는 초기값.
+      // 저장된 이름이 있으면 항상 그 값을 사용한다 (모든 항목명은 관리자가 직접 입력).
+      const DEFAULT_ITEM_CONFIG = [
+        { key: "word_score", label: "단어", max: 25, cut: null, active: true },
+        {
+          key: "reading_score",
+          label: "해석",
+          max: 30,
+          cut: null,
+          active: true,
+        },
+        { key: "mc_score", label: "객관식", max: 45, cut: null, active: true },
+        { key: "item4_score", label: "", max: 20, cut: null, active: false },
+      ];
+
+      // 모의고사 항목 (mock_scores 컬럼과 1:1). item_config가 없는 기존 모의고사는
+      // 예전처럼 '점수' 1개(만점 100)로 동작하고 그 값은 mock_scores.score에 있다.
+      const MOCK_ITEM_KEYS = [
+        "item1_score",
+        "item2_score",
+        "item3_score",
+        "item4_score",
+      ];
+      const DEFAULT_MOCK_ITEM_CONFIG = [
+        {
+          key: "item1_score",
+          label: "점수",
+          max: 100,
+          cut: null,
+          active: true,
+        },
+        { key: "item2_score", label: "", max: null, cut: null, active: false },
+        { key: "item3_score", label: "", max: null, cut: null, active: false },
+        { key: "item4_score", label: "", max: null, cut: null, active: false },
+      ];
+
+      // item_config(JSON, NULL 가능) → 정규화된 항목 배열.
+      // ① defaults의 고정 슬롯(물리 컬럼과 1:1, 고정 순서)을 예전과 똑같이 먼저 만들고
+      // ② 그 뒤에 defaults에 없는 key(= 5번째 이상 추가 항목)를 저장된 순서대로 이어붙인다.
+      // NULL(기존 주차)이면 ②가 비어 예전과 완전히 동일하다 (단어25/해석30/객관식45).
+      // ★ admin.html에 같은 함수가 복제돼 있다 — 한쪽만 고치면 관리자/학부모 총점이 조용히 어긋난다.
+      function normalizeItemConfig(raw, defaults = DEFAULT_ITEM_CONFIG) {
+        const items = raw && Array.isArray(raw.items) ? raw.items : null;
+        // def가 있으면 고정 슬롯(기본값 폴백), 없으면 추가 항목(기본값 없음)
+        const norm = (s, def) => ({
+          key: def ? def.key : s.key,
+          label: (s.label ?? (def ? def.label : "") ?? "").toString(),
+          max:
+            s.max === undefined || s.max === null || s.max === ""
+              ? def
+                ? def.max
+                : null
+              : parseFloat(s.max),
+          cut:
+            s.cut === undefined || s.cut === null || s.cut === ""
+              ? null
+              : parseFloat(s.cut),
+          active:
+            s.active === undefined ? (def ? def.active : true) : !!s.active,
+        });
+        const out = defaults.map((def) => {
+          const src = items
+            ? items.find((it) => it && it.key === def.key)
+            : null;
+          return norm(src || def, def);
+        });
+        // 추가 항목. key가 item_scores와 retest_pass의 키이므로 중복 key는 버린다.
+        if (items) {
+          const seen = new Set(out.map((it) => it.key));
+          items.forEach((src) => {
+            if (
+              !src ||
+              typeof src.key !== "string" ||
+              !src.key ||
+              seen.has(src.key)
+            )
+              return;
+            seen.add(src.key);
+            out.push(norm(src, null));
+          });
+        }
+        return out;
+      }
+
+      // 기본 슬롯 key(물리 컬럼과 1:1)를 모아둔다. 응답에 그 컬럼이 통째로 빠졌는지 판정하는 데 쓴다.
+      const LEGACY_ITEM_KEYS = new Set([...ITEM_KEYS, ...MOCK_ITEM_KEYS]);
+
+      // 항목 점수 읽기. 1~4번 항목은 물리 컬럼, 5번째 이상은 item_scores(jsonb)에서 꺼낸다.
+      // undefined(응답에 컬럼 자체가 없음)와 null(점수 미입력)의 구분이 핵심 —
+      // parent-login이 아직 item_scores를 안 내려주면 undefined가 나오고,
+      // 호출부의 기존 total_score / score 레거시 폴백이 그대로 작동해 화면이 깨지지 않는다.
+      // ★ admin.html에 같은 함수가 복제돼 있다.
+      function itemVal(row, key) {
+        if (!row) return undefined;
+        const bag = row.item_scores;
+        if (bag && bag[key] !== undefined) return bag[key]; // jsonb에 값이 있으면 우선
+        const v = row[key];
+        if (v !== undefined) return v; // 물리 컬럼
+        if (bag === undefined) return undefined; // 응답에 jsonb 자체가 없음
+        // jsonb는 있는데 key가 없다. 기본 슬롯이면 "응답에서 컬럼이 빠진 것"(→ 레거시 폴백 살림),
+        // 추가 항목이면 "아직 점수 미입력"(→ null).
+        // parent-login의 명시 select에 item_scores만 추가하고 word_score 등을 빠뜨리면
+        // 바로 이 경로를 탄다. 여기서 null을 돌려주면 computeTotal의 total_score 폴백이 죽고
+        // canItemBased가 true로 뒤집혀, 콘솔 경고도 없이 총점이 비고 석차 모집단에서 빠진다.
+        return LEGACY_ITEM_KEYS.has(key) ? undefined : null;
+      }
+
+      // 관리자가 직접 입력한 항목명을 그대로 출력하므로 HTML 이스케이프
+      function escapeHtml(str) {
+        return (str || "")
+          .toString()
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      // 해당 주차의 활성 항목 목록 (설정이 없으면 기본 3항목)
+      function itemsForWeek(weekId) {
+        const cfg = weekConfigMap[weekId];
+        return (cfg || normalizeItemConfig(null)).filter((it) => it.active);
+      }
+
+      // 활성 항목 만점 합계 = 그 주차의 총점 만점
+      function totalMaxForWeek(weekId) {
+        return itemsForWeek(weekId).reduce((a, it) => a + (it.max || 0), 0);
+      }
+
+      // 점수 행의 총점 계산: 활성 항목의 입력값 합.
+      // 활성 항목 컬럼이 하나라도 응답에 없으면(undefined) 계산이 틀어지므로
+      // 계산을 포기하고 기존 total_score로 폴백한다.
+      // (일부 컬럼만으로 합산하면 석차가 심각하게 왜곡됨)
+      function computeTotal(row, weekId) {
+        if (!row) return null;
+        const items = itemsForWeek(weekId ?? row.week_id);
+        const hasMissingColumn = items.some(
+          (it) => itemVal(row, it.key) === undefined,
+        );
+        if (hasMissingColumn) return row.total_score ?? null;
+        const entered = items
+          .map((it) => itemVal(row, it.key))
+          .filter((v) => v !== null);
+        // 컬럼은 모두 있는데 값이 전부 비어있음 → 미응시(null)
+        if (!entered.length) return null;
+        return entered.reduce((a, b) => a + parseFloat(b), 0);
+      }
+
+      async function login() {
+        const name = document.getElementById("input-name").value.trim();
+        const pin = document.getElementById("input-pin").value.trim();
+        const err = document.getElementById("error-msg");
+        const load = document.getElementById("login-loading");
+        err.classList.remove("show");
+        if (!name || !pin) {
+          err.textContent = "이름과 PIN을 모두 입력해주세요.";
+          err.classList.add("show");
+          return;
+        }
+        load.classList.add("show");
+        try {
+          const res = await fetch(PARENT_LOGIN_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, pin }),
+          });
+          if (res.status === 401) {
+            err.textContent = "이름 또는 PIN이 올바르지 않습니다.";
+            err.classList.add("show");
+            return;
+          }
+          if (!res.ok) {
+            err.textContent = "오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+            err.classList.add("show");
+            return;
+          }
+          // 세션은 서버가 준 HttpOnly 쿠키로 유지된다 (새로고침·뒤로 가기·단어 사이트 공유)
+          loginData = await res.json();
+          currentStudent = loginData.student;
+          document.getElementById("input-pin").value = "";
+          await showResult();
+        } catch (e) {
+          err.textContent = "오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+          err.classList.add("show");
+        } finally {
+          load.classList.remove("show");
+        }
+      }
+
+      function showChartAndSummary() {
+        if (allScores.length > 0) {
+          document.getElementById("summary-grid").style.display = "grid";
+          document.getElementById("chart-card").style.display = "block";
+        }
+      }
+
+      function hideChartAndSummary() {
+        document.getElementById("summary-grid").style.display = "none";
+        document.getElementById("chart-card").style.display = "none";
+      }
+
+      async function showResult() {
+        document.getElementById("login-section").style.display = "none";
+        document.getElementById("result-section").style.display = "block";
+        document.getElementById("tab-nav").classList.add("show");
+        document.getElementById("result-name").textContent =
+          currentStudent.name;
+        document.getElementById("result-class").textContent =
+          currentStudent.classes?.name || "";
+
+        currentWeeks = loginData.weeks || [];
+        allScores = loginData.myScores || [];
+
+        // 주차별 항목 설정 맵 구성 (item_config 없으면 기본값으로 정규화)
+        weekConfigMap = {};
+        currentWeeks.forEach((w) => {
+          weekConfigMap[w.id] = normalizeItemConfig(w.item_config);
+        });
+
+        if (allScores.length > 0) {
+          const totals = allScores
+            .map((s) => computeTotal(s, s.week_id))
+            .filter((v) => v !== null);
+          const avg = totals.length
+            ? (totals.reduce((a, b) => a + b, 0) / totals.length).toFixed(1)
+            : "-";
+          const best = totals.length ? Math.max(...totals) : "-";
+          document.getElementById("cum-avg").textContent =
+            avg + (avg !== "-" ? "점" : "");
+          document.getElementById("cum-best").textContent =
+            best + (best !== "-" ? "점" : "");
+          showChartAndSummary();
+          renderChart();
+        }
+
+        renderPeriodSelector();
+      }
+
+      // 'M.D' → 정렬용 숫자(월*100+일).
+      // 목록에 11~12월과 1~2월이 함께 있으면 해가 바뀐 것으로 보고
+      // 1~2월을 뒤로 보낸다(12.30 다음이 1.5가 되도록).
+      function periodSortKeys(dates) {
+        const parsed = dates.map((d) => {
+          const m = (d || "").match(/^\s*(\d{1,2})\s*\.\s*(\d{1,2})/);
+          return m ? { m: parseInt(m[1]), d: parseInt(m[2]) } : null;
+        });
+        const months = parsed.filter(Boolean).map((x) => x.m);
+        const wraps = months.some((m) => m >= 11) && months.some((m) => m <= 2);
+        return parsed.map((x) =>
+          x === null
+            ? -Infinity // 날짜를 못 읽으면 맨 뒤로
+            : x.m * 100 + x.d + (wraps && x.m <= 2 ? 1200 : 0),
+        );
+      }
+
+      // 날짜 최신순 정렬 (같은 날짜면 등록 순서 유지)
+      function sortByDateDesc(list, dateOf) {
+        const keys = periodSortKeys(list.map(dateOf));
+        return list
+          .map((item, i) => ({ item, key: keys[i], i }))
+          .sort((a, b) => b.key - a.key || b.i - a.i)
+          .map((x) => x.item);
+      }
+
+      // 커트라인 미달 판정 (admin.html과 같은 규칙)
+      function isBelowCut(val, cut) {
+        return (
+          val !== null &&
+          val !== undefined &&
+          val !== "" &&
+          cut !== null &&
+          cut !== undefined &&
+          cut !== "" &&
+          parseFloat(val) < parseFloat(cut)
+        );
+      }
+
+      // 항목 한 칸의 표시 내용.
+      // 커트라인 미달 + 재시험 통과 → 점수 대신 '재시험 통과' (초록)
+      // 커트라인 미달 + 미통과     → 점수를 빨간색으로 + '재시험 대상'
+      // 재시험은 점수가 아니라 통과 여부만 관리하므로, 통과하면 원점수를 감춘다.
+      function itemCellHtml(item, value, retestPass) {
+        const below = isBelowCut(value, item.cut);
+        const passed = below && retestPass?.[item.key] === true;
+        const label = `<div class="score-label">${escapeHtml(item.label) || "-"}</div>`;
+        const shown = value === null || value === undefined ? "-" : value;
+        const max = item.max ?? "";
+        // 통과했으면 기준 미달 강조를 풀고 초록 배지만 붙인다 (점수는 항상 그대로 보여준다)
+        return `<div class="score-item${below && !passed ? " below-cut" : ""}">
+            ${label}
+            <div class="score-value">${shown}<span class="score-max"> / ${max}</span></div>
+            ${passed ? `<div class="retest-pass">재시험 통과</div>` : ""}
+            ${below && !passed ? `<div class="retest-target">재시험 대상</div>` : ""}
+          </div>`;
+      }
+
+      // 점수(항목 점수 또는 총점)가 하나라도 입력돼 있는지.
+      // 5번째 이상 항목은 물리 컬럼이 없어 item_scores(jsonb)에 있으므로 그 키까지 함께 본다
+      // (여기서는 시험별 항목 설정을 모르므로 응답에 실려온 키를 그대로 쓴다).
+      function hasMockScore(row) {
+        if (!row) return false;
+        if (row.score !== null && row.score !== undefined) return true;
+        const keys = MOCK_ITEM_KEYS.concat(Object.keys(row.item_scores || {}));
+        return keys.some((k) => {
+          const v = itemVal(row, k);
+          return v !== null && v !== undefined;
+        });
+      }
+
+      // 학부모에게 이 모의고사를 보여줄지: 점수가 있거나, 선생님이 미응시로 표시한 경우만
+      function isMockVisible(row) {
+        return hasMockScore(row) || row?.absent === true;
+      }
+
+      // 선생님이 출석 체크를 해제한 주차 = 결석
+      // (scores.attendance는 기본값 true라 값이 없으면 출석으로 본다)
+      function isAbsentWeek(row) {
+        return row?.attendance === false;
+      }
+
+      // 주차 + 모의고사를 하나의 드롭다운으로. 항목이 늘어나도 화면이 밀리지 않는다.
+      function renderPeriodSelector() {
+        const sel = document.getElementById("period-select");
+        sel.innerHTML = "";
+
+        const exams = loginData.exams || [];
+        window._mockScoreMap = {};
+        (loginData.myMockScores || []).forEach((s) => {
+          window._mockScoreMap[s.exam_id] = s;
+        });
+
+        const weekList = sortByDateDesc(
+          currentWeeks || [],
+          (w) => w.test_date || w.label,
+        );
+        // 반 전체가 아니라 일부만 응시하는 모의고사가 있어서,
+        // 점수도 없고 미응시로 표시되지도 않은 시험은 아예 보여주지 않는다.
+        const examList = sortByDateDesc(
+          exams.filter((e) => isMockVisible(window._mockScoreMap[e.id])),
+          (e) => e.exam_date || e.label,
+        );
+
+        if (!weekList.length && !examList.length) {
+          const opt = document.createElement("option");
+          opt.textContent = "등록된 주차가 없습니다.";
+          sel.appendChild(opt);
+          sel.disabled = true;
+          return;
+        }
+        sel.disabled = false;
+
+        // 결석한 주차는 드롭다운에서 바로 구분되게 표시한다
+        const weekOptionText = (w) => {
+          const name = w.label || w.test_date;
+          const row = (allScores || []).find((s) => s.week_id === w.id);
+          return isAbsentWeek(row) ? `${name} — 결석` : name;
+        };
+        // 모의고사는 이름 뒤에 (월.일)을 붙여 언제 본 시험인지 바로 보이게 한다.
+        // 이름을 따로 안 붙인 시험은 주차와 구분되도록 '모의고사'를 앞에 붙인다.
+        const examOptionText = (e) => {
+          const name =
+            e.label && e.exam_date && e.label !== e.exam_date
+              ? `${e.label} (${e.exam_date})`
+              : `모의고사 (${e.exam_date || e.label})`;
+          const row = window._mockScoreMap[e.id];
+          return hasMockScore(row) ? name : `${name} — 미응시`;
+        };
+
+        // 주차와 모의고사를 한 목록에 섞어 날짜 최신순으로 정렬한다.
+        // (예전에는 둘을 그룹으로 나눠 넣어서, 모의고사가 날짜와 상관없이 항상 맨 아래에 모였다)
+        const periodItems = sortByDateDesc(
+          [
+            ...weekList.map((w) => ({
+              value: "w" + w.id,
+              date: w.test_date || w.label,
+              text: weekOptionText(w),
+            })),
+            ...examList.map((e) => ({
+              value: "m" + e.id,
+              date: e.exam_date || e.label,
+              text: examOptionText(e),
+            })),
+          ],
+          (p) => p.date,
+        );
+
+        periodItems.forEach((p) => {
+          const opt = document.createElement("option");
+          opt.value = p.value;
+          opt.textContent = p.text;
+          sel.appendChild(opt);
+        });
+
+        if (!weekList.length) {
+          hideChartAndSummary();
+          document.getElementById("score-content").innerHTML =
+            '<div class="empty-msg">등록된 주차가 없습니다. 모의고사 결과를 선택해 확인하세요.</div>';
+        }
+
+        // 기본 선택: 가장 최근 주차(없으면 가장 최근 모의고사)
+        sel.value = weekList.length
+          ? "w" + weekList[0].id
+          : "m" + examList[0].id;
+        onPeriodChange(sel.value);
+      }
+
+      function onPeriodChange(value) {
+        if (!value) return;
+        const id = parseInt(value.slice(1));
+        const isMock = value.charAt(0) === "m";
+        document.getElementById("score-content").style.display = isMock
+          ? "none"
+          : "block";
+        document.getElementById("mock-score-section").style.display = "none";
+        if (isMock) {
+          hideChartAndSummary();
+          showMockScore(id);
+        } else {
+          showChartAndSummary();
+          loadScore(id);
+        }
+      }
+
+      async function showMockScore(examId) {
+        const s = window._mockScoreMap?.[examId];
+        const section = document.getElementById("mock-score-section");
+        section.style.display = "block";
+        // 점수가 없는 경우: 선생님이 미응시로 표시했으면 그 사실만 알리고,
+        // 아니면(응시 대상이 아니었던 학생) 드롭다운에서 이미 걸러진다.
+        if (!hasMockScore(s)) {
+          const examRow = (loginData.exams || []).find((e) => e.id === examId);
+          const examName =
+            examRow &&
+            examRow.label &&
+            examRow.exam_date &&
+            examRow.label !== examRow.exam_date
+              ? `${examRow.label} (${examRow.exam_date})`
+              : examRow?.label || examRow?.exam_date || "";
+          section.innerHTML = s?.absent
+            ? `
+    <div class="card">
+      <div class="card-header"><h2>모의고사 점수</h2></div>
+      <div class="card-body">
+        <div class="notice-card warning" style="margin-bottom:0">
+          <span class="notice-icon" aria-hidden="true"></span>
+          <div>
+            <div class="notice-title">미응시</div>
+            <div class="notice-body">${escapeHtml(examName)}<br>해당 모의고사에 응시하지 않았습니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>`
+            : '<div class="empty-msg">해당 모의고사에 응시하지 않았습니다.</div>';
+          return;
+        }
+
+        // group_id가 같은 모의고사 전체(= 관리자가 선택한 반들)를 기준으로 평균/석차 계산
+        const examInfo = (loginData.exams || []).find((e) => e.id === examId);
+        const groupId = examInfo?.group_id;
+        // 항목 설정이 없으면(옛 모의고사 또는 서버 응답에 item_config 없음)
+        // 예전처럼 '점수' 1개(만점 100)로 동작한다.
+        const mockItems = normalizeItemConfig(
+          examInfo?.item_config,
+          DEFAULT_MOCK_ITEM_CONFIG,
+        ).filter((it) => it.active);
+
+        let rankExamIds;
+        if (
+          groupId &&
+          loginData.mockGroupExamMap &&
+          loginData.mockGroupExamMap[groupId]
+        ) {
+          rankExamIds = new Set(loginData.mockGroupExamMap[groupId]);
+        } else {
+          rankExamIds = new Set([examId]);
+        }
+        const allMockScores = (loginData.mockRankScores || []).filter((x) =>
+          rankExamIds.has(x.exam_id),
+        );
+
+        // 항목 점수가 있으면 항목 합계, 없으면 기존 score 폴백.
+        // 0점도 응시로 인정한다(빈 값=미응시만 제외).
+        const rowTotal = (row) => {
+          const vals = mockItems
+            .map((it) => itemVal(row, it.key))
+            .filter((v) => v !== null && v !== undefined);
+          if (vals.length) return vals.reduce((a, b) => a + parseFloat(b), 0);
+          return row.score === null || row.score === undefined
+            ? null
+            : parseFloat(row.score);
+        };
+
+        const validScores = allMockScores
+          .map(rowTotal)
+          .filter((x) => x !== null);
+        const avg = validScores.length
+          ? (
+              validScores.reduce((a, b) => a + b, 0) / validScores.length
+            ).toFixed(1)
+          : null;
+
+        const myTotal = rowTotal(s);
+        const totalMax = mockItems.reduce((a, it) => a + (it.max || 0), 0);
+
+        // 석차 계산
+        const sorted = validScores.slice().sort((a, b) => b - a);
+        const rank =
+          myTotal === null ? "-" : sorted.findIndex((v) => v === myTotal) + 1;
+
+        // 항목이 2개 이상이면 항목별 점수도 함께 보여준다.
+        // 항목이 1개여도 재시험 상태(통과/대상)가 있으면 보여줘야 하므로 함께 판단한다.
+        const hasItemValues = mockItems.some(
+          (it) =>
+            itemVal(s, it.key) !== null && itemVal(s, it.key) !== undefined,
+        );
+        const hasRetestInfo = mockItems.some((it) =>
+          isBelowCut(itemVal(s, it.key), it.cut),
+        );
+        const itemsHtml =
+          hasItemValues && (mockItems.length > 1 || hasRetestInfo)
+            ? `<div class="score-grid items-${mockItems.length}" style="margin-bottom:10px">
+            ${mockItems
+              .map((it) => itemCellHtml(it, itemVal(s, it.key), s.retest_pass))
+              .join("")}
+          </div>`
+            : "";
+
+        section.innerHTML = `
+    <div class="card">
+      <div class="card-header"><h2>모의고사 점수</h2></div>
+      <div class="card-body">
+        ${itemsHtml}
+        <div class="score-item total" style="border-radius:12px;margin-bottom:10px">
+          <div class="score-label">총점</div>
+          <div><span class="score-value" style="color:white">${myTotal === null ? "-" : myTotal}</span><span class="score-max"> / ${totalMax}</span></div>
+        </div>
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="meta-label">평균</div>
+            <div class="meta-value">${avg ? avg + "점" : "-"}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">석차</div>
+            <div class="meta-value">${rank !== "-" ? rank + "등" : "-"}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">응시 인원</div>
+            <div class="meta-value">${validScores.length}명</div>
+          </div>
+        </div>
+        ${s.memo ? `<div style="margin-top:6px;font-size:13px;color:var(--gray)">${escapeHtml(s.memo)}</div>` : ""}
+      </div>
+    </div>`;
+      }
+
+      function renderChart() {
+        const card = document.getElementById("chart-card");
+        card.style.display = "block";
+        const scoreMap = {};
+        allScores.forEach((s) => {
+          scoreMap[s.week_id] = computeTotal(s, s.week_id);
+        });
+        const labels = currentWeeks.map((w) => w.label || w.test_date);
+        const data = currentWeeks.map((w) => scoreMap[w.id] ?? null);
+        // y축 최대값: 주차별 총점 만점 중 가장 큰 값 (기본 100)
+        const yMax = Math.max(
+          100,
+          ...currentWeeks.map((w) => totalMaxForWeek(w.id)),
+        );
+        if (chartInstance) chartInstance.destroy();
+        const ctx = document.getElementById("score-chart").getContext("2d");
+        chartInstance = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "총점",
+                data,
+                borderColor: "#2f5ea8",
+                backgroundColor: "rgba(47,94,168,0.12)",
+                borderWidth: 2.5,
+                pointBackgroundColor: "#0f1f3d",
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                tension: 0.35,
+                fill: true,
+                spanGaps: true,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y}점` } },
+            },
+            scales: {
+              y: {
+                min: 0,
+                max: yMax,
+                ticks: { font: { size: 11 }, color: "#6b6b6b" },
+                grid: { color: "rgba(0,0,0,0.05)" },
+              },
+              x: {
+                ticks: { font: { size: 11 }, color: "#6b6b6b" },
+                grid: { display: false },
+              },
+            },
+          },
+        });
+      }
+
+      async function loadScore(weekId) {
+        const content = document.getElementById("score-content");
+        content.innerHTML =
+          '<div class="loading show"><div class="spinner"></div>불러오는 중...</div>';
+        try {
+          const scoreData = allScores.find((s) => s.week_id === weekId);
+
+          if (!scoreData) {
+            content.innerHTML =
+              '<div class="empty-msg">해당 주차 점수가 아직 입력되지 않았습니다.</div>';
+            return;
+          }
+
+          const s = scoreData;
+          let rank = "-",
+            total_students = "-";
+
+          // group_id가 있으면 같은 그룹 전체, 없으면 해당 주차만 기준으로 평균/석차 계산
+          const weekInfo = (currentWeeks || []).find((w) => w.id === weekId);
+          const groupId = weekInfo?.group_id;
+
+          let rankWeekIds;
+          if (
+            groupId &&
+            loginData.groupWeekMap &&
+            loginData.groupWeekMap[groupId]
+          ) {
+            rankWeekIds = new Set(loginData.groupWeekMap[groupId]);
+          } else {
+            rankWeekIds = new Set([weekId]);
+          }
+          const scoresForRank = (loginData.rankScores || []).filter((x) =>
+            rankWeekIds.has(x.week_id),
+          );
+
+          // 화면에 표시할 본인 총점 (해당 주차의 활성 항목 합계)
+          const myTotal = computeTotal(s, weekId);
+
+          // 석차·평균은 비교 대상 전원이 같은 기준이어야 한다.
+          // 한 명이라도 항목 컬럼이 응답에 없으면 전원 total_score 기준으로 통일.
+          // 그룹 석차는 다른 반의 주차까지 포함되지만 같은 시험이므로
+          // 항목 구성은 현재 주차 설정을 전원에게 동일 적용한다.
+          // (다른 반 week_id는 weekConfigMap에 없어 기본값으로 떨어지므로)
+          const canItemBased = [s, ...scoresForRank].every((r) =>
+            itemsForWeek(weekId).every(
+              (it) => itemVal(r, it.key) !== undefined,
+            ),
+          );
+          if (!canItemBased) {
+            console.warn(
+              "[점수] 항목 점수 컬럼이 응답에 없어 석차·평균을 기존 total_score 기준으로 계산합니다. " +
+                "parent-login 함수의 select에 item_config / 항목 점수 컬럼을 추가하세요.",
+            );
+          }
+          const basisOf = (r) =>
+            canItemBased ? computeTotal(r, weekId) : (r.total_score ?? null);
+
+          const myBasis = basisOf(s);
+          const sorted = scoresForRank
+            .map(basisOf)
+            .filter((x) => x !== null)
+            .sort((a, b) => b - a);
+          total_students = sorted.length;
+          rank =
+            myBasis !== null ? sorted.findIndex((v) => v === myBasis) + 1 : "-";
+
+          // 평균 계산
+          let displayAvg = "-";
+          const totals = scoresForRank.map(basisOf).filter((x) => x !== null);
+          if (totals.length > 0) {
+            displayAvg =
+              (totals.reduce((a, b) => a + b, 0) / totals.length).toFixed(1) +
+              "점";
+          }
+
+          // 관리자가 '이번 주 과제 없음'을 체크한 주차는 과제 관련 표시를 전부 숨긴다
+          const noHomework = s.no_homework === true;
+          // homework_rate가 null이면 미기재 처리
+          const hwNull =
+            s.homework_rate === null || s.homework_rate === undefined;
+          const hwRate = hwNull ? null : s.homework_rate;
+          const hwColor =
+            hwRate === null
+              ? "#6b6b6b"
+              : hwRate >= 90
+                ? "#27ae60"
+                : hwRate >= 70
+                  ? "#e67e22"
+                  : "#c0392b";
+          const hwDisplay = hwRate === null ? "미기재" : hwRate + "%";
+
+          // 결석한 주차는 점수 위에 사유를 먼저 알린다(점수는 그대로 함께 보여줌)
+          const absent = isAbsentWeek(s);
+          const absentHtml = absent
+            ? `
+        <div class="notice-card warning">
+          <span class="notice-icon" aria-hidden="true"></span>
+          <div>
+            <div class="notice-title">결석</div>
+            <div class="notice-body">이번 주 수업에 결석했습니다.${myTotal === null ? "" : "<br>아래 점수는 보충·재응시 등으로 기록된 점수입니다."}</div>
+          </div>
+        </div>`
+            : "";
+
+          // 과제 수행률별 안내 문구를 대신해 클리닉 안내를 노출한다.
+          // 조교가 점수 탭 / 클리닉 문자 탭에서 입력한 scores.clinic_memo를 그대로 전달한다.
+          if (s.clinic_memo === undefined) {
+            console.warn(
+              "[클리닉] 응답에 clinic_memo 컬럼이 없어 클리닉 안내를 표시할 수 없습니다. " +
+                "parent-login 함수의 scores select에 clinic_memo를 추가하세요.",
+            );
+          }
+          // 메모가 비어 있으면(= 그 주 클리닉 안내가 없으면) 카드를 아예 그리지 않는다
+          const clinicMemo = (s.clinic_memo ?? "").toString().trim();
+          const noticeHtml = clinicMemo
+            ? `
+        <div class="notice-card warning">
+          <span class="notice-icon" aria-hidden="true"></span>
+          <div>
+            <div class="notice-title">클리닉 안내</div>
+            <div class="notice-body">${escapeHtml(clinicMemo).replace(/\n/g, "<br>")}</div>
+          </div>
+        </div>`
+            : "";
+
+          content.innerHTML = `
+      <div class="card">
+        <div class="card-header"><h2>점수 결과</h2></div>
+        <div class="card-body">
+          ${absentHtml}
+          <div class="score-grid items-${itemsForWeek(weekId).length}">
+            ${itemsForWeek(weekId)
+              .map((it) => itemCellHtml(it, itemVal(s, it.key), s.retest_pass))
+              .join("")}
+            <div class="score-item total">
+              <div class="score-label">총점</div>
+              <div><span class="score-value">${myTotal === null ? "-" : myTotal}</span><span class="score-max"> / ${totalMaxForWeek(weekId)}</span></div>
+            </div>
+          </div>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <div class="meta-label">평균</div>
+              <div class="meta-value">${displayAvg}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">석차</div>
+              <div class="meta-value">${rank}등 / ${total_students}명</div>
+            </div>
+          </div>
+          ${
+            noHomework
+              ? ""
+              : `<div class="homework-card">
+            <div><div class="homework-label">과제 수행률</div></div>
+            <div style="text-align:right">
+              <div class="homework-rate" style="color:${hwColor}">${hwDisplay}</div>
+            </div>
+          </div>`
+          }
+          ${noticeHtml}
+        </div>
+      </div>`;
+        } catch (e) {
+          content.innerHTML =
+            '<div class="empty-msg">데이터를 불러오는 중 오류가 발생했습니다.</div>';
+        }
+      }
+
+      function switchTab(tabName) {
+        const tabNav = document.getElementById("tab-nav");
+        const buttons = tabNav.querySelectorAll(".tab-btn");
+        buttons.forEach((btn, i) => {
+          btn.classList.toggle("active", (i === 0 && tabName === "scores") || (i === 1 && tabName === "vocab") || (i === 2 && tabName === "passage"));
+        });
+
+        if (tabName === "vocab" || tabName === "passage") {
+          // 단어·지문 사이트는 같은 도메인의 독립 페이지로 연다. 세션 쿠키가 있어서 다시 로그인하지 않는다
+          window.location.href = tabName === "passage" ? "./vocab/?go=passage" : "./vocab/";
+        }
+      }
+
+      function logout() {
+        currentStudent = null;
+        currentWeeks = [];
+        allScores = [];
+        loginData = null;
+        window._mockScoreMap = {};
+        if (chartInstance) {
+          chartInstance.destroy();
+          chartInstance = null;
+        }
+        document.getElementById("result-section").style.display = "none";
+        document.getElementById("login-section").style.display = "block";
+        document.getElementById("summary-grid").style.display = "none";
+        document.getElementById("chart-card").style.display = "none";
+        document.getElementById("mock-score-section").style.display = "none";
+        document.getElementById("mock-score-section").innerHTML = "";
+        document.getElementById("input-name").value = "";
+        document.getElementById("input-pin").value = "";
+        document.getElementById("error-msg").classList.remove("show");
+        document.getElementById("tab-nav").classList.remove("show");
+        // 서버가 세션 쿠키를 지운다 (실패해도 화면은 이미 로그아웃 상태)
+        fetch(PARENT_LOGIN_URL, { method: "DELETE" }).catch(() => {});
+      }
+
+      document.getElementById("input-pin").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") login();
+      });
+      document.getElementById("input-name").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") document.getElementById("input-pin").focus();
+      });
+      // 세션 쿠키가 살아 있으면 PIN 없이 성적 화면을 다시 연다
+      async function tryResumeSession() {
+        const load = document.getElementById("login-loading");
+        load.classList.add("show");
+        try {
+          const res = await fetch(PARENT_LOGIN_URL, { method: "GET" });
+          // 401: 만료되었거나 재원 상태가 바뀜 → 로그인 화면으로
+          if (!res.ok) return false;
+          loginData = await res.json();
+          currentStudent = loginData.student;
+          await showResult();
+          return true;
+        } catch (e) {
+          return false;
+        } finally {
+          load.classList.remove("show");
+        }
+      }
+      tryResumeSession().then((resumed) => {
+        if (!resumed) document.getElementById("input-name").focus();
+      });
+    </script>
+  </body>
+</html>
