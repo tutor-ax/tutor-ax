@@ -2,15 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { LoginData, ScoreGateway } from "./gateway";
 import Scores from "./Scores";
 
+import { currentRoute, navigationUrl } from "./routing";
 function locationRoute() {
-  if (location.pathname.startsWith("/admin")) return "admin";
-  if (
-    location.pathname.startsWith("/passage") ||
-    new URLSearchParams(location.search).get("go") === "passage"
-  )
-    return "passage";
-  if (location.pathname.startsWith("/vocab")) return "vocab";
-  return "scores";
+  return currentRoute(new URL(location.href));
 }
 export default function App({ gateway }: { gateway: ScoreGateway }) {
   const [data, setData] = useState<LoginData | null>(null);
@@ -44,7 +38,7 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
     return () => window.removeEventListener("popstate", changed);
   }, []);
   function navigate(path: string) {
-    history.pushState({}, "", path);
+    history.pushState({}, "", navigationUrl(path));
     setRoute(locationRoute());
   }
   async function openDemo() {
@@ -230,7 +224,7 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
           <Scores data={data} onLogout={logout} />
         )}
       </main>
-      <footer>© 용산대성N학원 영어과</footer>
+      <footer>© Tutor AX 데모 학원 영어과</footer>
       <aside className="demo-notice" data-testid="demo-notice">
         tutor-ax · React 마이그레이션 개발본
         <br />

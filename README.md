@@ -18,6 +18,14 @@
 | 관리자 / 단어 공부 / 지문 공부 | 다음 단계. 경로만 유지한 안내 화면 |
 | OCR·RAG·클리닉 에이전트 | 아직 구현하지 않음 |
 
+## 공개 데모
+
+https://yooncandooit.github.io/tutor-ax/
+
+main에 push하면 `.github/workflows/pages.yml`이 합성 데이터 전용 앱을 빌드하고 `dist`만 GitHub Pages에 배포합니다. 저장소는 Private이지만 이 데모와 배포된 JavaScript는 공개입니다. 고객 학원명은 데모 표기로 변경했습니다. 실제 고객 데이터·서버 자격증명은 포함하지 않습니다.
+
+Pages 빌드는 `PAGES_BUILD=true npm run build`를 사용합니다. `/tutor-ax/` asset base와 hash 경로를 사용해 탭 이동 후 새로고침도 유지합니다. 원본 비교용 HTML과 문서는 배포하지 않습니다.
+
 ## 실행
 
 Node.js 22와 npm 10.9 이상을 권장합니다. 로컬 검증은 Node 20.12.2에서도 수행했습니다. `.nvmrc`는 프로젝트용 권장 버전이며 시스템 Node를 자동 변경하지 않습니다.
