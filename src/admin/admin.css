@@ -1,0 +1,221 @@
+.admin-app {
+  --admin-navy: #0f1f3d;
+  --admin-gold: #c8a96e;
+  --admin-cream: #f8f5f0;
+  --admin-border: #e8e4df;
+  min-height: 100vh;
+  background: var(--admin-cream);
+  color: var(--admin-navy);
+  font:
+    14px/1.6 system-ui,
+    sans-serif;
+}
+.admin-app * {
+  box-sizing: border-box;
+}
+.admin-app header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: var(--admin-navy);
+  color: white;
+}
+.admin-app h1 {
+  margin: 0;
+  font-size: 17px;
+  color: white;
+}
+.admin-app header span {
+  color: var(--admin-gold);
+  font-size: 12px;
+}
+.admin-app nav {
+  display: flex;
+  overflow-x: auto;
+  background: white;
+  border-bottom: 1px solid var(--admin-border);
+}
+.admin-app button {
+  padding: 10px 16px;
+  margin: 4px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-navy);
+  color: white;
+  font:
+    600 13px system-ui,
+    sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-app nav button {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 15px 18px;
+  background: white;
+  color: #676767;
+  border-bottom: 2px solid transparent;
+}
+.admin-app nav button[aria-pressed="true"] {
+  color: var(--admin-navy);
+  border-bottom-color: var(--admin-gold);
+}
+.admin-app main {
+  max-width: 1200px;
+  padding: 16px;
+  margin: auto;
+}
+.admin-app section {
+  background: white;
+  padding: 18px;
+  border-radius: 14px;
+  margin: 16px 0;
+  box-shadow: 0 4px 20px #0f1f3d15;
+}
+.admin-app h2 {
+  font-size: 16px;
+  border-bottom: 1px solid var(--admin-border);
+  padding-bottom: 14px;
+  margin: 0 0 16px;
+}
+.admin-app p {
+  margin: 10px 0;
+}
+.admin-app label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  margin: 6px 10px 6px 0;
+}
+.admin-app input,
+.admin-app select,
+.admin-app textarea {
+  max-width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1.5px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-cream);
+  color: var(--admin-navy);
+  font: inherit;
+}
+.admin-app textarea {
+  width: 100%;
+  resize: vertical;
+}
+.admin-app input:focus,
+.admin-app select:focus,
+.admin-app textarea:focus,
+.admin-app button:focus-visible {
+  outline: 2px solid var(--admin-gold);
+  outline-offset: 2px;
+}
+.admin-app .item-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.admin-app .item-config > input {
+  width: 160px;
+}
+.admin-app .item-config label input {
+  width: 100px;
+}
+.admin-app summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.admin-app details {
+  border-bottom: 1px solid var(--admin-border);
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+}
+.admin-app .table-scroll {
+  overflow: auto;
+}
+.admin-app table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+}
+.admin-app th,
+.admin-app td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--admin-border);
+}
+.admin-app th {
+  white-space: nowrap;
+  font-size: 12px;
+}
+.admin-app td input[type="number"] {
+  width: 95px;
+}
+.admin-app .retest {
+  display: flex;
+  flex-direction: row;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.admin-app .below-cut {
+  border-color: #c0392b;
+  color: #c0392b;
+  background: #fdf0ef;
+}
+.admin-app [role="alert"],
+.admin-app .demo-warning {
+  color: #9e4c0b;
+  background: #fef5ec;
+  padding: 10px;
+  border-radius: 8px;
+}
+.admin-app fieldset {
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  margin: 14px 0;
+  padding: 16px;
+}
+.admin-app fieldset label:last-of-type {
+  display: flex;
+}
+.admin-app legend {
+  font-weight: 700;
+}
+.admin-app .history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--admin-border);
+}
+.admin-app [role="dialog"] {
+  padding: 20px;
+  border: 2px solid var(--admin-gold);
+  background: white;
+  border-radius: 12px;
+}
+.admin-app [role="status"] {
+  font-size: 12px;
+  color: #626262;
+}
+@media (max-width: 600px) {
+  .admin-app main {
+    padding: 10px;
+  }
+  .admin-app section {
+    padding: 12px;
+  }
+  .admin-app .item-config {
+    gap: 2px;
+  }
+  .admin-app .item-config > input {
+    width: 100%;
+  }
+  .admin-app h1 {
+    font-size: 15px;
+  }
+}

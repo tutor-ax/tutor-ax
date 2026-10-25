@@ -25,6 +25,10 @@ jobs:
       - run: npm run build
         env:
           PAGES_BUILD: 'true'
+      - run: npx playwright install --with-deps chromium --no-shell
+      - run: npx playwright test e2e/study.spec.ts e2e/admin-browser.spec.ts
+        env:
+          PAGES_BUILD: 'true'
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

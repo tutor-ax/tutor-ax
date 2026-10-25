@@ -9,6 +9,7 @@
     "test": "vitest",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:pages": "PAGES_BUILD=true npm run build && PAGES_BUILD=true playwright test e2e/study.spec.ts e2e/admin-browser.spec.ts",
     "check": "npm test -- --run && npm run build && npm run test:e2e"
   },
   "dependencies": {

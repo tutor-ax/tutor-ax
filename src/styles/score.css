@@ -388,6 +388,37 @@ footer {
   color: var(--gray);
 }
 
+.container.admin-container {
+  max-width: 1400px;
+}
+.container.study-container {
+  max-width: 880px;
+  padding: 0;
+}
+.site-header {
+  position: relative;
+}
+.site-header .academy-logo {
+  position: absolute;
+  top: 24px;
+  left: max(12px, calc(50% - 240px));
+  width: 40px;
+  height: 40px;
+  padding: 3px;
+  background: white;
+  border-radius: 9px;
+  object-fit: contain;
+}
+@media (max-width: 380px) {
+  .site-header h1 {
+    font-size: 20px;
+    padding-left: 24px;
+  }
+  .site-header .academy-logo {
+    width: 34px;
+    height: 34px;
+  }
+}
 #root {
   width: 100%;
   min-height: 100vh;

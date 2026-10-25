@@ -6,6 +6,28 @@ export default defineConfig({
   preview: { host: "127.0.0.1", port: 4173, strictPort: true },
   plugins: [
     {
+      name: "pages-admin-entry",
+      apply: "build",
+      enforce: "post",
+      generateBundle(_options, bundle) {
+        if (process.env.PAGES_BUILD !== "true") return;
+        const entry = bundle["index.html"];
+        if (!entry || entry.type !== "asset")
+          throw new Error("Missing built HTML entry");
+        this.emitFile({
+          type: "asset",
+          fileName: "admin/index.html",
+          source: entry.source,
+        });
+        this.emitFile({
+          type: "asset",
+          fileName: "admin.html",
+          source:
+            '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=./#/admin.html"><title>Tutor AX 관리자 데모</title></head><body><a href="./#/admin.html">관리자 데모 열기</a></body></html>',
+        });
+      },
+    },
+    {
       name: "local-development-websocket-only",
       apply: "serve",
       transformIndexHtml(html) {

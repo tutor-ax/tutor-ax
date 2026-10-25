@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../src/App";
 import fixture from "../src/data/demo-score.json";
 import type { LoginData, ScoreGateway } from "../src/gateway";
@@ -68,7 +68,7 @@ it("recovers from a session error and a demo load error without fetching", async
     logout: async () => {},
   };
   render(<App gateway={failing} />);
-  expect(await screen.findByRole("alert")).toHaveTextContent("세션");
+  await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("세션"));
   fireEvent.click(await screen.findByTestId("demo-login"));
   expect(
     await screen.findByText(
@@ -110,5 +110,5 @@ it("direct passage URL keeps its route after demo session restore", async () => 
   expect(
     await screen.findByRole("heading", { name: "지문 공부" }),
   ).toBeInTheDocument();
-  expect(screen.getByText(/이 화면은 다음 마이그레이션/)).toBeInTheDocument();
+  expect(screen.getByTestId("passage-workspace")).toBeVisible();
 });

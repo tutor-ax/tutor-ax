@@ -182,7 +182,7 @@ test("demo session survives refresh, navigation and logout without APIs", async 
   await page.reload();
   await expect(page.locator("#result-name")).toHaveText("데모 학생");
   await page.getByRole("button", { name: "단어 공부", exact: true }).click();
-  await expect(page.getByText(/아직|예정|준비|이전/).first()).toBeVisible();
+  await expect(page.getByTestId("vocab-workspace")).toBeVisible();
   await page.goBack();
   await expect(page.locator("#result-name")).toHaveText("데모 학생");
   await page.getByRole("button", { name: "다른 학생 조회" }).click();

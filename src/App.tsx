@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { LoginData, ScoreGateway } from "./gateway";
 import Scores from "./Scores";
+import academyLogo from "./assets/academy-logo.svg";
+import Admin from "./admin/Admin";
+import Vocab from "./vocab/Vocab";
+import Passage from "./passage/Passage";
 
 import { currentRoute, navigationUrl } from "./routing";
 function locationRoute() {
@@ -39,6 +43,7 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
   }, []);
   function navigate(path: string) {
     history.pushState({}, "", navigationUrl(path));
+    window.dispatchEvent(new PopStateEvent("popstate"));
     setRoute(locationRoute());
   }
   async function openDemo() {
@@ -80,10 +85,17 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
     );
     setPin("");
   }
-  const deferred = route !== "scores";
+  const returnToScores = () => navigate("/scores");
   return (
     <>
-      <header>
+      <header className="site-header">
+        <img
+          className="academy-logo"
+          src={academyLogo}
+          alt="학원 로고"
+          width="40"
+          height="40"
+        />
         <h1>
           영어과 <span>성적 관리</span>
         </h1>
@@ -112,8 +124,14 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
           </button>
         </nav>
       </header>
-      <main className="container">
-        {!data ? (
+      <main
+        className={`container ${route === "admin" ? "admin-container" : data && route !== "scores" ? "study-container" : ""}`}
+      >
+        {route === "admin" ? (
+          <section data-testid="admin-workspace">
+            <Admin onExit={returnToScores} />
+          </section>
+        ) : !data ? (
           <section id="login-section">
             <div className="card">
               <div className="card-header">
@@ -192,33 +210,13 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
               데모로 둘러보기
             </button>
           </section>
-        ) : deferred ? (
-          <section className="card" aria-label="마이그레이션 예정 화면">
-            <div className="card-header">
-              <h2>
-                {route === "admin"
-                  ? "관리자"
-                  : route === "vocab"
-                    ? "단어 공부"
-                    : "지문 공부"}
-              </h2>
-            </div>
-            <div className="card-body">
-              <p className="empty-msg">
-                이 화면은 다음 마이그레이션 단계에서 제공할 예정입니다.
-                <br />
-                운영 사이트로 이동하거나 실제 데이터를 조회하지 않습니다.
-              </p>
-              <button
-                className="btn btn-primary"
-                onClick={() => navigate("/scores")}
-              >
-                성적 확인으로 돌아가기
-              </button>
-              <button className="btn btn-secondary" onClick={logout}>
-                ← 다른 학생 조회
-              </button>
-            </div>
+        ) : route === "vocab" ? (
+          <section data-testid="vocab-workspace">
+            <Vocab onExit={returnToScores} />
+          </section>
+        ) : route === "passage" ? (
+          <section data-testid="passage-workspace">
+            <Passage onExit={returnToScores} />
           </section>
         ) : (
           <Scores data={data} onLogout={logout} />

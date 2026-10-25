@@ -1,0 +1,86 @@
+import { test, expect } from "@playwright/test";
+const pages = process.env.PAGES_BUILD === "true";
+const entry = pages ? "/tutor-ax/" : "/";
+const route = (path: string) => (pages ? entry + "#" + path : path);
+
+test("old admin.html path opens admin demo without student login", async ({
+  page,
+}) => {
+  await page.goto(pages ? entry + "admin.html" : "/admin.html");
+  await expect(page.getByTestId("admin-workspace")).toBeVisible();
+  await expect(page.getByLabel("학부모 연락처 뒷 4자리")).toHaveCount(0);
+});
+test("clean admin URL survives reload without hash", async ({ page }) => {
+  await page.goto(pages ? entry + "admin/" : "/admin/");
+  await expect(page.getByTestId("admin-workspace")).toBeVisible();
+  expect(new URL(page.url()).hash).toBe("");
+  await page.reload();
+  await expect(page.getByTestId("admin-workspace")).toBeVisible();
+});
+for (const width of [390, 1440])
+  test(`${width}px learning workflows survive storage and reload`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    const api: string[] = [];
+    page.on("request", (r) => {
+      if (["fetch", "xhr"].includes(r.resourceType())) api.push(r.url());
+    });
+    await page.goto(entry);
+    const logo = page.getByRole("img", { name: "학원 로고" });
+    await expect(logo).toBeVisible();
+    expect(
+      await logo.evaluate(
+        (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
+      ),
+    ).toBe(true);
+    await page.getByTestId("demo-login").click();
+    await page.getByRole("button", { name: "단어 공부", exact: true }).click();
+    await page.getByRole("button", { name: /데모 기본 어휘/ }).click();
+    await page.getByRole("button", { name: /DAY 01/ }).click();
+    await page.getByRole("button", { name: "선택 범위 학습" }).click();
+    await page.getByRole("button", { name: "플래시카드", exact: true }).click();
+    await page.getByRole("button", { name: "뜻 보기", exact: true }).click();
+    await expect(page.getByText("사과", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "즐겨찾기 추가" }).click();
+    await page.screenshot({
+      path: info.outputPath(`vocab-${width}.png`),
+      fullPage: true,
+    });
+    await page.reload();
+    await page.getByRole("button", { name: /즐겨찾기/ }).click();
+    await expect(page.getByText("apple", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "이 단어들 학습" }).click();
+    await page.getByRole("button", { name: "뜻 쓰기", exact: true }).click();
+    await page.getByLabel("답안").fill("틀린 답");
+    await page.getByRole("button", { name: "정답 확인" }).click();
+    await expect(page.getByText("오답 · 정답: 사과")).toBeVisible();
+    await page.getByRole("button", { name: "결과 보기" }).click();
+    await expect(page.getByText("정답 0 / 1")).toBeVisible();
+    await page.goto(route("/vocab/?go=passage"));
+    await page.getByRole("button", { name: /데모 읽기/ }).click();
+    await page.getByRole("button", { name: "01 작은 도서관" }).click();
+    await page
+      .getByRole("button", { name: "① Our town has a small library." })
+      .click();
+    await expect(
+      page.getByText("① 우리 마을에는 작은 도서관이 있다.", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "01 작은 도서관" }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: info.outputPath(`passage-${width}.png`),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    expect(api).toEqual([]);
+    expect(errors).toEqual([]);
+  });

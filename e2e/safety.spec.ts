@@ -34,21 +34,19 @@ test("production preview CSP blocks same-origin and external data connections", 
   expect(apiRequests).toEqual([]);
 });
 
-test("legacy-style paths are local and explicitly deferred, not external redirects", async ({
+test("legacy-style paths open local React workspaces, not external redirects", async ({
   page,
 }) => {
   await page.goto("/index.html");
   await page.getByTestId("demo-login").click();
-  for (const [path, title] of [
-    ["/vocab/", "단어 공부"],
-    ["/vocab/?go=passage", "지문 공부"],
-    ["/admin.html", "관리자"],
+  for (const [path, workspace] of [
+    ["/vocab/", "vocab-workspace"],
+    ["/vocab/?go=passage", "passage-workspace"],
+    ["/admin.html", "admin-workspace"],
   ]) {
     await page.goto(path);
-    await expect(
-      page.getByRole("heading", { name: title, exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText(/이 화면은 다음 마이그레이션/)).toBeVisible();
+    await expect(page.getByTestId(workspace)).toBeVisible();
+    await expect(page.getByText(/이 화면은 다음 마이그레이션/)).toHaveCount(0);
     expect(new URL(page.url()).hostname).toBe("127.0.0.1");
   }
   await page.goto("/scores");
