@@ -7,8 +7,10 @@ test("old admin.html path opens admin demo without student login", async ({
   page,
 }) => {
   await page.goto(pages ? entry + "admin.html" : "/admin.html");
-  await expect(page.getByTestId("admin-workspace")).toBeVisible();
+  if (pages) await page.waitForURL('**/tutor-ax/admin/', {waitUntil:'domcontentloaded'});
+  await expect(page.getByTestId("admin-workspace")).toBeVisible({timeout:15000});
   await expect(page.getByLabel("학부모 연락처 뒷 4자리")).toHaveCount(0);
+  if (pages) expect(new URL(page.url()).pathname).toBe('/tutor-ax/admin/');
 });
 test("clean admin URL survives reload without hash", async ({ page }) => {
   await page.goto(pages ? entry + "admin/" : "/admin/");

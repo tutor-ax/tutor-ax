@@ -23,7 +23,7 @@ export default defineConfig({
           type: "asset",
           fileName: "admin.html",
           source:
-            '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=./#/admin.html"><title>Tutor AX 관리자 데모</title></head><body><a href="./#/admin.html">관리자 데모 열기</a></body></html>',
+            '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=./admin/"><title>Tutor AX 관리자 데모</title></head><body><a href="./admin/">관리자 데모 열기</a></body></html>',
         });
       },
     },
