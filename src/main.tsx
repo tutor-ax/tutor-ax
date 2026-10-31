@@ -4,6 +4,7 @@ import App from "./App";
 import { createDemoGateway, type SessionStorage } from "./gateway";
 import "./styles/theme.css";
 import "./styles/score.css";
+import "./styles/student.css";
 
 // Lazy access handles browsers which disallow even obtaining localStorage.
 const storage: SessionStorage = {

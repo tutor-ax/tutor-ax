@@ -10,6 +10,12 @@ export function currentRoute(url: URL, base = import.meta.env.BASE_URL) {
     )
   )
     return "admin";
+  if (
+    base === "/" &&
+    url.pathname === "/" &&
+    /^#\/admin(?:\/|\.html)?$/.test(url.hash)
+  )
+    return "admin";
   const route =
     base === "/" ? url : new URL(url.hash.slice(1) || "/", url.origin);
   if (route.pathname.startsWith("/admin")) return "admin";

@@ -7,10 +7,15 @@ test("old admin.html path opens admin demo without student login", async ({
   page,
 }) => {
   await page.goto(pages ? entry + "admin.html" : "/admin.html");
-  if (pages) await page.waitForURL('**/tutor-ax/admin/', {waitUntil:'domcontentloaded'});
-  await expect(page.getByTestId("admin-workspace")).toBeVisible({timeout:15000});
+  if (pages)
+    await page.waitForURL("**/tutor-ax/admin/", {
+      waitUntil: "domcontentloaded",
+    });
+  await expect(page.getByTestId("admin-workspace")).toBeVisible({
+    timeout: 15000,
+  });
   await expect(page.getByLabel("학부모 연락처 뒷 4자리")).toHaveCount(0);
-  if (pages) expect(new URL(page.url()).pathname).toBe('/tutor-ax/admin/');
+  if (pages) expect(new URL(page.url()).pathname).toBe("/tutor-ax/admin/");
 });
 test("clean admin URL survives reload without hash", async ({ page }) => {
   await page.goto(pages ? entry + "admin/" : "/admin/");
@@ -19,6 +24,33 @@ test("clean admin URL survives reload without hash", async ({ page }) => {
   await page.reload();
   await expect(page.getByTestId("admin-workspace")).toBeVisible();
 });
+test("administrator aliases render one standalone shell and exit cleanly", async ({
+  page,
+}) => {
+  const aliases = pages
+    ? [
+        entry + "admin",
+        entry + "admin/",
+        entry + "admin.html",
+        entry + "#/admin",
+        entry + "#/admin/",
+      ]
+    : ["/admin", "/admin/", "/admin.html", "/#/admin", "/#/admin/"];
+  for (const alias of aliases) {
+    await page.goto(alias);
+    await expect(page.getByTestId("admin-workspace")).toBeVisible();
+    await expect(page.locator("header")).toHaveCount(1);
+    await expect(
+      page.locator(".site-header, .student-shell, .container, .demo-notice"),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator("header")).toHaveCount(1);
+  }
+  await page.getByRole("button", { name: "나가기", exact: true }).click();
+  await expect(page.locator(".student-shell")).toBeVisible();
+  await expect(page.getByTestId("admin-workspace")).toHaveCount(0);
+});
+
 for (const width of [390, 1440])
   test(`${width}px learning workflows survive storage and reload`, async ({
     page,

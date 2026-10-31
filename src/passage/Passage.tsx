@@ -83,6 +83,13 @@ export default function Passage({ onExit }: { onExit?: () => void }) {
     <div className="passage-app">
       <div className="wrap">
         <h1 className="title">지문 공부</h1>
+        <ol className="learning-path" aria-label="읽기 순서">
+          <li aria-current={!selected ? "step" : undefined}>지문 선택</li>
+          <li aria-current={selected && !whole ? "step" : undefined}>
+            한 문장씩 읽기
+          </li>
+          <li aria-current={whole ? "step" : undefined}>해석 · 단어 확인</li>
+        </ol>
         <p className="demo-disclosure">
           직접 작성한 데모 지문입니다. 원문·해석만 제공하며 AI 채점이나 서버
           조회는 하지 않습니다.

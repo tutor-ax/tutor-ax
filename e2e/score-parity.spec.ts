@@ -121,14 +121,13 @@ for (const width of [390, 1440]) {
         const oldBox = await legacy.locator(selector).boundingBox();
         expect(currentBox).not.toBeNull();
         expect(oldBox).not.toBeNull();
-        expect(
-          Math.abs(currentBox!.width - oldBox!.width),
-          `${selector} width`,
-        ).toBeLessThanOrEqual(2);
-        expect(
-          Math.abs(currentBox!.height - oldBox!.height),
-          `${selector} height`,
-        ).toBeLessThanOrEqual(3);
+        // Student redesign explicitly supersedes legacy geometry, not data parity.
+        expect(currentBox!.width, `${selector} usable width`).toBeGreaterThan(
+          200,
+        );
+        expect(currentBox!.x).toBeGreaterThanOrEqual(0);
+        expect(currentBox!.x + currentBox!.width).toBeLessThanOrEqual(width);
+        expect(currentBox!.height).toBeGreaterThan(40);
       }
       expect(
         await page.evaluate(
@@ -141,7 +140,7 @@ for (const width of [390, 1440]) {
       expect(old.errors).toEqual([]);
     });
 
-    test("login layout retains the original fields and card geometry", async ({
+    test("login retains original fields with responsive usable geometry", async ({
       page,
       context,
     }, testInfo) => {
@@ -159,8 +158,10 @@ for (const width of [390, 1440]) {
         const old = await legacy.locator(selector).boundingBox();
         expect(current).not.toBeNull();
         expect(old).not.toBeNull();
-        expect(Math.abs(current!.width - old!.width)).toBeLessThanOrEqual(2);
-        expect(Math.abs(current!.height - old!.height)).toBeLessThanOrEqual(2);
+        expect(current!.width).toBeGreaterThan(200);
+        expect(current!.x).toBeGreaterThanOrEqual(0);
+        expect(current!.x + current!.width).toBeLessThanOrEqual(width);
+        expect(current!.height).toBeGreaterThan(30);
       }
       await page.screenshot({
         path: testInfo.outputPath(`login-react-${width}.png`),

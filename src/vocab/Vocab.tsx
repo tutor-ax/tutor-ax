@@ -59,6 +59,29 @@ export default function Vocab({ onExit }: { onExit?: () => void }) {
     <div className="vocab-app">
       <div className="wrap">
         <h1 className="title">단어 공부</h1>
+        <ol className="learning-path" aria-label="학습 순서">
+          <li
+            aria-current={
+              view === "home" || view === "days" ? "step" : undefined
+            }
+          >
+            범위 선택
+          </li>
+          <li
+            aria-current={
+              ["modes", "flash", "quiz"].includes(view) ? "step" : undefined
+            }
+          >
+            연습하기
+          </li>
+          <li
+            aria-current={
+              view === "favorites" || view === "wrong" ? "step" : undefined
+            }
+          >
+            모아 복습
+          </li>
+        </ol>
         <p className="demo-disclosure">
           합성 단어 8개 · 이 브라우저에만 기록 · AI/서버 채점 연결 없음
         </p>
@@ -252,7 +275,17 @@ export default function Vocab({ onExit }: { onExit?: () => void }) {
           <section className="panel">
             <h2>{view === "favorites" ? "즐겨찾기" : "오답노트"}</h2>
             {!list.length ? (
-              <p>아직 저장된 단어가 없어요.</p>
+              <div className="review-empty">
+                <p>아직 저장된 단어가 없어요.</p>
+                <p>
+                  {view === "wrong"
+                    ? "문제를 풀면 틀린 단어가 여기에 모여요."
+                    : "플래시카드에서 즐겨찾기에 추가한 단어를 여기서 다시 볼 수 있어요."}
+                </p>
+                <button className="day-chip" onClick={() => setView("days")}>
+                  단어 범위 선택하기
+                </button>
+              </div>
             ) : (
               <>
                 <div className="psg-words">

@@ -16,6 +16,7 @@ import {
   type ScoreRow,
 } from "./domain";
 import type { LoginData } from "./gateway";
+import { scoreChange } from "./scoreChange";
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -121,9 +122,9 @@ function WeeklyScore({ data, id }: { data: LoginData; id: number }) {
     rate == null
       ? "#6b6b6b"
       : rate >= 90
-        ? "#27ae60"
+        ? "#286246"
         : rate >= 70
-          ? "#e67e22"
+          ? "#815316"
           : "#c0392b";
   const memo = row.clinic_memo?.trim();
   return (
@@ -267,14 +268,14 @@ function ScoreChart({ data }: { data: LoginData }) {
           {
             label: "총점",
             data: series.values,
-            borderColor: "#2f5ea8",
-            backgroundColor: "rgba(47,94,168,0.12)",
+            borderColor: "#315b4c",
+            backgroundColor: "rgba(49,91,76,0.08)",
             borderWidth: 2.5,
-            pointBackgroundColor: "#0f1f3d",
+            pointBackgroundColor: "#315b4c",
             pointRadius: 5,
             pointHoverRadius: 7,
-            tension: 0.35,
-            fill: true,
+            tension: 0,
+            fill: false,
             spanGaps: true,
           },
         ],
@@ -324,9 +325,11 @@ function ScoreChart({ data }: { data: LoginData }) {
 export default function Scores({
   data,
   onLogout,
+  onStudy,
 }: {
   data: LoginData;
   onLogout: () => void;
+  onStudy?: (target: "vocab" | "passage") => void;
 }) {
   const periods = useMemo(() => {
     const weeks = sortByDateDesc(
@@ -374,8 +377,26 @@ export default function Scores({
   const mock = selected.startsWith("m");
   const id = Number(selected.slice(1));
   const cumulative = summary(data.weeks, data.myScores);
+  const records = sortByDateDesc(
+    data.weeks,
+    (week) => week.test_date || week.label || "",
+  ).map((week) => {
+    const row = data.myScores.find((score) => score.week_id === week.id);
+    const items = activeItems(week);
+    return {
+      id: week.id,
+      label: week.label || week.test_date || "주차",
+      total: row ? computeTotal(row, items) : null,
+      max: items.reduce((sum, item) => sum + (item.max || 0), 0),
+      absent: row?.attendance === false,
+    };
+  });
   return (
     <section id="result-section" style={{ display: "block" }}>
+      <div className="score-heading">
+        <h1>나의 성적 기록</h1>
+        <p>한 번의 점수보다, 쌓여가는 배움.</p>
+      </div>
       <div className="student-info">
         <div className="student-name" id="result-name">
           {data.student.name}
@@ -384,55 +405,108 @@ export default function Scores({
           {data.student.classes?.name || ""}
         </div>
       </div>
-      <Card title="주차 선택">
-        <select
-          className="period-select"
-          id="period-select"
-          aria-label="주차 선택"
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          disabled={!periods.options.length}
-        >
-          {periods.options.length ? (
-            periods.options.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.text}
-              </option>
-            ))
-          ) : (
-            <option value="">등록된 주차가 없습니다.</option>
-          )}
-        </select>
-      </Card>
-      <div id="score-content" style={{ display: mock ? "none" : "block" }}>
-        {selected && !mock ? (
-          <WeeklyScore data={data} id={id} />
-        ) : (
-          <div className="empty-msg">주차를 선택해주세요.</div>
-        )}
-      </div>
-      <div id="mock-score-section" style={{ display: mock ? "block" : "none" }}>
-        {mock && <MockScore data={data} id={id} />}
-      </div>
-      {!mock && data.myScores.length > 0 && (
-        <>
-          <div className="summary-grid" id="summary-grid">
-            <div className="summary-item">
-              <div className="summary-label">누적 평균</div>
-              <div className="summary-value" id="cum-avg">
-                {cumulative.average === null ? "-" : `${cumulative.average}점`}
-              </div>
-            </div>
-            <div className="summary-item">
-              <div className="summary-label">최고 점수</div>
-              <div className="summary-value" id="cum-best">
-                {cumulative.best === null ? "-" : `${cumulative.best}점`}
-              </div>
-            </div>
+      <div className="score-layout">
+        <div className="score-detail">
+          <Card title="주차 선택">
+            <select
+              className="period-select"
+              id="period-select"
+              aria-label="주차 선택"
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              disabled={!periods.options.length}
+            >
+              {periods.options.length ? (
+                periods.options.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.text}
+                  </option>
+                ))
+              ) : (
+                <option value="">등록된 주차가 없습니다.</option>
+              )}
+            </select>
+          </Card>
+          <div id="score-content" style={{ display: mock ? "none" : "block" }}>
+            {selected && !mock ? (
+              <WeeklyScore data={data} id={id} />
+            ) : (
+              <div className="empty-msg">주차를 선택해주세요.</div>
+            )}
           </div>
-          <ScoreChart data={data} />
-        </>
-      )}
+          <div
+            id="mock-score-section"
+            style={{ display: mock ? "block" : "none" }}
+          >
+            {mock && <MockScore data={data} id={id} />}
+          </div>
+        </div>
+        <aside className="score-history" aria-label="학습 기록과 다음 공부">
+          {!mock && data.myScores.length > 0 && (
+            <>
+              <div className="summary-grid" id="summary-grid">
+                <div className="summary-item">
+                  <div className="summary-label">누적 평균</div>
+                  <div className="summary-value" id="cum-avg">
+                    {cumulative.average === null
+                      ? "-"
+                      : `${cumulative.average}점`}
+                  </div>
+                </div>
+                <div className="summary-item">
+                  <div className="summary-label">최고 점수</div>
+                  <div className="summary-value" id="cum-best">
+                    {cumulative.best === null ? "-" : `${cumulative.best}점`}
+                  </div>
+                </div>
+              </div>
+              <ScoreChart data={data} />
+              <div className="score-records">
+                <table>
+                  <caption>주차별 기록</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">주차</th>
+                      <th scope="col">점수 / 만점</th>
+                      <th scope="col">직전 대비</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {records.map((record, index) => (
+                      <tr key={record.id}>
+                        <th scope="row">
+                          {record.label}
+                          {record.absent && <small>결석 기록</small>}
+                        </th>
+                        <td>
+                          {record.total ?? "—"} / {record.max}
+                        </td>
+                        <td>{scoreChange(record, records[index + 1])}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p>
+                  결석 기록은 평균에 포함돼요. 만점이 다르거나 결석·미기재
+                  기록이 있으면 증감을 비교하지 않아요.
+                </p>
+              </div>
+            </>
+          )}
+          {onStudy && (
+            <section className="next-study">
+              <h2>이제, 다음 공부</h2>
+              <p>결과를 확인했다면 연습으로 이어가요.</p>
+              <button onClick={() => onStudy("vocab")}>
+                단어 연습하기 <span aria-hidden="true">→</span>
+              </button>
+              <button onClick={() => onStudy("passage")}>
+                지문 읽기 <span aria-hidden="true">→</span>
+              </button>
+            </section>
+          )}
+        </aside>
+      </div>
       <button className="btn btn-secondary" onClick={onLogout}>
         ← 다른 학생 조회
       </button>

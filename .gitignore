@@ -7,3 +7,13 @@ dist/
 playwright-report/
 test-results/
 .DS_Store
+.claude/skills/impeccable/scripts/bin/
+.claude/skills/impeccable/scripts/data/font-index.json
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/config.local.json
+# Project-local design tooling; install via documented npx command.
+.claude/
+.agents/
+.codex/
+.impeccable/

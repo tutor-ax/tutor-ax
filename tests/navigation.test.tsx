@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../src/App";
 import { createDemoGateway } from "../src/gateway";
 vi.mock("chart.js/auto", () => ({
@@ -29,8 +29,9 @@ it("opens administrator directly without asking for a real student identity", as
 });
 it("routes student tabs to working study screens instead of migration placeholders", async () => {
   render(<App gateway={createDemoGateway(localStorage)} />);
+  await waitFor(() => expect(screen.getByRole("button", { name: "데모로 둘러보기" })).toBeEnabled());
   fireEvent.click(
-    await screen.findByRole("button", { name: "데모로 둘러보기" }),
+    screen.getByRole("button", { name: "데모로 둘러보기" }),
   );
   await screen.findByText("데모 학생");
   fireEvent.click(screen.getByRole("button", { name: "단어 공부" }));

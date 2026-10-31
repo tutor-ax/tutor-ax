@@ -1,0 +1,835 @@
+/* Student notebook only. Legacy theme and admin CSS deliberately remain intact. */
+@font-face {
+  font-family: "Gowun Notebook";
+  src: url("../assets/fonts/gowun-notebook.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+.student-shell {
+  --navy: #203d35;
+  --navy-light: #31584c;
+  --accent: #cbdad3;
+  --accent-ink: #315b4c;
+  --accent-light: #e4eee7;
+  --cream: #f1f4ef;
+  --white: #fffefa;
+  --gray: #58635d;
+  --light-gray: #e9ede6;
+  --border: #c9d2c8;
+  --red: #a13536;
+  --red-light: #fbefed;
+  --orange: #815316;
+  --orange-light: #f6efd9;
+  --green: #286246;
+  --green-light: #e4eee7;
+  --shadow: none;
+  --shadow-lg: none;
+  --notebook-tab: #e6e0f0;
+  width: 100%;
+  min-height: 100vh;
+  color: var(--navy);
+  background: var(--cream);
+  font:
+    16px/1.65 "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    system-ui,
+    sans-serif;
+  caret-color: var(--accent-ink);
+  scrollbar-color: var(--border) var(--cream);
+}
+.student-shell ::selection {
+  background: var(--notebook-tab);
+  color: var(--navy);
+}
+.student-shell :is(button, input, select) {
+  font-family: inherit;
+}
+.student-shell :is(button, input, select, a):focus-visible {
+  outline: 3px solid #75618d;
+  outline-offset: 4px;
+  box-shadow: none;
+}
+.student-shell button {
+  transition:
+    background-color 160ms ease-out,
+    border-color 160ms ease-out;
+}
+.student-shell button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.student-shell h1 {
+  font:
+    400 clamp(32px, 3.4vw, 46px) / 1.35 "Gowun Notebook",
+    "Batang",
+    serif;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.student-shell h2 {
+  font-size: 20px;
+  line-height: 1.4;
+}
+.student-shell .skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  z-index: 10;
+  background: var(--white);
+  padding: 12px 20px;
+  color: var(--navy);
+}
+.student-shell .skip-link:focus {
+  top: 8px;
+}
+.student-shell .site-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px max(24px, calc((100% - 1120px) / 2));
+  min-height: 96px;
+  text-align: left;
+  background: var(--navy);
+  color: var(--white);
+  overflow: visible;
+}
+.student-shell .site-header .academy-logo {
+  position: static;
+  width: 44px;
+  height: 44px;
+  border-radius: 4px;
+  flex: none;
+}
+.student-shell .notebook-brand {
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 700;
+}
+.student-shell .notebook-brand span {
+  display: block;
+  color: #cadbd0;
+  font-size: 13px;
+  font-weight: 400;
+}
+.student-shell .tab-nav {
+  margin: 0 0 0 auto;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+.student-shell .tab-btn {
+  border: 0;
+  border-radius: 4px 4px 0 0;
+  min-height: 48px;
+  padding: 12px 24px;
+  font-size: 15px;
+  color: #f4f5ee;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+}
+.student-shell .tab-btn:hover {
+  background: #315347;
+}
+.student-shell .tab-btn.active {
+  color: var(--navy);
+  background: var(--notebook-tab);
+  border-bottom-color: var(--notebook-tab);
+}
+.student-shell .container {
+  max-width: 1120px;
+  padding: 48px 32px 64px;
+  margin: auto;
+}
+.student-shell .container.study-container {
+  max-width: 1120px;
+  padding: 40px 32px 64px;
+}
+.student-shell .card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  margin: 0 0 28px;
+}
+.student-shell .card-header {
+  background: transparent;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.student-shell .card-header h2 {
+  color: var(--navy);
+  font-size: 18px;
+  font-weight: 700;
+}
+.student-shell .card-body {
+  padding: 0;
+}
+.student-shell .btn {
+  min-height: 48px;
+  border-radius: 4px;
+  font-size: 15px;
+}
+.student-shell .btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+.student-shell .btn-secondary:hover {
+  background: var(--accent-light);
+}
+.student-shell #login-section {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 72px;
+  align-items: start;
+  padding-top: 24px;
+}
+.student-shell .login-intro h1 {
+  margin-bottom: 24px;
+}
+.student-shell .intro-lead {
+  font-size: 25px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.student-shell .login-intro > p:not(.intro-lead) {
+  color: var(--gray);
+  font-size: 15px;
+  line-height: 1.9;
+}
+.student-shell .notebook-contents {
+  list-style: none;
+  margin-top: 40px;
+}
+.student-shell .notebook-contents li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  border-top: 1px solid var(--border);
+  padding: 16px 0;
+  font-size: 14px;
+}
+.student-shell .notebook-contents span {
+  color: var(--gray);
+}
+.student-shell .login-entry {
+  background: var(--white);
+  border: 1px solid var(--border);
+  padding: 32px;
+  border-radius: 4px;
+}
+.student-shell .login-guidance {
+  color: var(--gray);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+.student-shell .form-group {
+  margin-bottom: 18px;
+}
+.student-shell .form-group label {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--navy);
+}
+.student-shell .form-group input {
+  background: var(--white);
+  border: 1px solid #a3afa3;
+  border-radius: 4px;
+  min-height: 48px;
+}
+.student-shell input::placeholder {
+  color: #68756c;
+}
+.student-shell .login-entry [data-testid="demo-login"] {
+  background: var(--navy);
+  color: var(--white);
+  border-color: var(--navy);
+}
+.student-shell .login-entry form .btn {
+  background: var(--light-gray);
+  color: var(--navy);
+}
+.student-shell .login-footnote {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--gray);
+}
+.student-shell .score-heading {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 24px;
+}
+.student-shell .score-heading p {
+  color: var(--gray);
+  font-size: 14px;
+}
+.student-shell .student-info {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  background: transparent;
+  padding: 0 0 24px;
+  margin: 0;
+  border-bottom: 2px solid var(--navy);
+  border-radius: 0;
+}
+.student-shell .student-name {
+  font-size: 19px;
+  color: var(--navy);
+  margin: 0;
+}
+.student-shell .student-class {
+  font-size: 14px;
+  color: var(--gray);
+}
+.student-shell .score-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  gap: 48px;
+  padding-top: 28px;
+}
+.student-shell .score-history {
+  border-left: 1px solid var(--border);
+  padding-left: 32px;
+}
+.student-shell .period-select {
+  border: 1px solid #a3afa3;
+  border-radius: 4px;
+  min-height: 48px;
+  font-size: 15px;
+}
+.student-shell .score-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 18px;
+}
+.student-shell .score-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 16px;
+  align-items: baseline;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 12px;
+  border-radius: 0;
+}
+.student-shell .score-label {
+  color: var(--navy);
+  font-size: 15px;
+  margin: 0;
+}
+.student-shell .score-value {
+  font-size: 25px;
+}
+.student-shell .score-max {
+  font-size: 14px;
+}
+.student-shell .score-item.below-cut {
+  border: 0;
+  border-bottom: 1px solid #e9bbbb;
+  background: var(--red-light);
+  padding: 14px 12px;
+}
+.student-shell :is(.retest-pass, .retest-target) {
+  font-size: 12px;
+  border-radius: 2px;
+  justify-self: start;
+  margin-top: 4px;
+  padding: 2px 6px;
+}
+.student-shell .score-item.total {
+  order: -1;
+  border-radius: 4px;
+  padding: 18px 20px;
+  margin-bottom: 6px;
+  background: var(--navy);
+  color: white;
+}
+.student-shell .score-item.total .score-label {
+  color: #f4f5ef;
+}
+.student-shell .score-item.total .score-value {
+  font-size: 36px;
+}
+.student-shell .score-item.total .score-max {
+  color: #cfddd6;
+}
+.student-shell .meta-grid {
+  gap: 24px;
+}
+.student-shell .meta-item {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 0;
+  text-align: left;
+}
+.student-shell .meta-label,
+.student-shell .summary-label {
+  font-size: 13px;
+}
+.student-shell .meta-value {
+  font-size: 19px;
+}
+.student-shell .homework-card {
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  padding: 16px 0;
+}
+.student-shell .homework-label {
+  font-size: 14px;
+}
+.student-shell .notice-card {
+  border-radius: 4px;
+  padding: 16px;
+}
+.student-shell .notice-title {
+  font-size: 14px;
+}
+.student-shell .notice-body {
+  font-size: 14px;
+  color: #514b3d;
+}
+.student-shell .summary-grid {
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 28px;
+}
+.student-shell .summary-item {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+  padding: 0 12px 24px 0;
+}
+.student-shell .summary-value {
+  font-size: 26px;
+}
+.student-shell .chart-wrap {
+  padding: 8px 0 16px;
+}
+.student-shell .next-study {
+  margin-top: 32px;
+  padding: 24px;
+  background: #e4e9df;
+  border-radius: 4px;
+}
+.student-shell .next-study h2 {
+  font-size: 20px;
+}
+.student-shell .next-study p {
+  color: var(--gray);
+  font-size: 14px;
+  margin: 8px 0 16px;
+}
+.student-shell .next-study button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 0;
+  border: 0;
+  border-top: 1px solid #b8c5b7;
+  background: transparent;
+  color: var(--navy);
+  font-size: 16px;
+  cursor: pointer;
+  text-align: left;
+}
+.student-shell #result-section > .btn-secondary {
+  width: auto;
+  margin-top: 24px;
+  padding-inline: 24px;
+}
+.student-shell :is(.vocab-app, .passage-app) {
+  font-family: inherit;
+  --r: 4px;
+}
+.student-shell :is(.vocab-app, .passage-app) .wrap {
+  max-width: none;
+  padding: 0;
+}
+.student-shell :is(.vocab-app, .passage-app) h1.title {
+  font:
+    400 clamp(32px, 3.4vw, 46px) / 1.35 "Gowun Notebook",
+    Batang,
+    serif;
+  margin-bottom: 14px;
+}
+.student-shell :is(.vocab-app, .passage-app) .demo-disclosure {
+  color: var(--gray);
+  font-size: 13px;
+}
+.student-shell :is(.vocab-app, .passage-app) .study-actions {
+  gap: 8px;
+  margin: 24px 0;
+}
+.student-shell :is(.vocab-app, .passage-app) .day-chip {
+  border-radius: 4px;
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 14px;
+  background: transparent;
+}
+.student-shell :is(.vocab-app, .passage-app) .day-chip:hover {
+  background: var(--accent-light);
+}
+.student-shell :is(.vocab-app, .passage-app) .day-chip.on {
+  background: var(--notebook-tab);
+  color: var(--navy);
+  border-color: #8a7a9b;
+  box-shadow: none;
+}
+.student-shell :is(.vocab-app, .passage-app) .day-chip.all {
+  background: var(--navy);
+  color: var(--white);
+}
+.student-shell :is(.vocab-app, .passage-app) .panel {
+  padding: 28px;
+  border-radius: 4px;
+  box-shadow: none;
+  background: var(--white);
+}
+.student-shell :is(.vocab-app, .passage-app) .grid {
+  display: block;
+  border-top: 2px solid var(--navy);
+}
+.student-shell :is(.vocab-app, .passage-app) .grade-card {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 28px 16px;
+  gap: 8px;
+  position: relative;
+}
+.student-shell :is(.vocab-app, .passage-app) .grade-card:hover {
+  transform: none;
+  background: var(--accent-light);
+  box-shadow: none;
+}
+.student-shell :is(.vocab-app, .passage-app) .g-eyebrow {
+  display: none;
+}
+.student-shell :is(.vocab-app, .passage-app) .g-name {
+  font-size: 25px;
+  font-weight: 600;
+}
+.student-shell :is(.vocab-app, .passage-app) .g-meta {
+  font-size: 15px;
+}
+.student-shell :is(.vocab-app, .passage-app) .subtitle {
+  color: var(--gray);
+  font-size: 17px;
+  margin: 28px 0 18px;
+}
+.student-shell :is(.vocab-app, .passage-app) .mode-row {
+  gap: 0 24px;
+}
+.student-shell :is(.vocab-app, .passage-app) .mode-btn {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 22px 12px;
+  font-size: 17px;
+}
+.student-shell :is(.vocab-app, .passage-app) .mode-btn:hover {
+  transform: none;
+  background: var(--accent-light);
+}
+.student-shell :is(.vocab-app, .passage-app) .scope-banner {
+  border-radius: 2px;
+  margin-top: 20px;
+}
+.student-shell :is(.vocab-app, .passage-app) .pick-bar {
+  box-shadow: none;
+  border-radius: 4px;
+  background: var(--white);
+  position: static;
+  padding: 16px;
+}
+.student-shell :is(.vocab-app, .passage-app) .pick-bar button {
+  border-radius: 4px;
+  min-height: 44px;
+}
+.student-shell .vocab-app .flashcard {
+  position: relative;
+  height: 340px;
+  max-width: 720px;
+  margin: 0 auto 20px;
+}
+.student-shell .vocab-app .fc-face {
+  border-radius: 4px;
+  box-shadow: 0 8px 24px #203d350d;
+  border-top: 1px solid var(--navy);
+  gap: 18px;
+}
+.student-shell .vocab-app .fc-word {
+  font:
+    400 clamp(36px, 5vw, 58px) / 1.2 Georgia,
+    "Gowun Notebook",
+    serif;
+  overflow-wrap: anywhere;
+}
+.student-shell .vocab-app .fc-pos {
+  margin: 0;
+  font-size: 14px;
+}
+.student-shell .vocab-app .counter {
+  font-size: 15px;
+  margin: 18px 0;
+}
+.student-shell .vocab-app .quiz-q {
+  font:
+    400 38px/1.4 Georgia,
+    "Gowun Notebook",
+    serif;
+}
+.student-shell
+  .vocab-app
+  :is(
+    .opt,
+    .ans-row input,
+    .ans-row button,
+    .ans-feed,
+    .result .row button,
+    .quiz-foot button
+  ) {
+  border-radius: 4px;
+}
+.student-shell .vocab-app .ans-row {
+  margin-top: 24px;
+}
+.student-shell .vocab-app .result {
+  padding: 32px 0;
+}
+.student-shell .vocab-app .result .big {
+  font-size: 48px;
+}
+.student-shell :is(.vocab-app, .passage-app) .vrow {
+  padding: 18px 8px;
+}
+.student-shell .passage-app .psg-en {
+  font-size: 22px;
+  line-height: 1.95;
+  text-align: left;
+  max-width: 70ch;
+  margin: auto;
+}
+.student-shell .passage-app .sen {
+  text-align: left;
+  color: var(--navy);
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  width: 100%;
+  font: inherit;
+}
+.student-shell .passage-app .sen-ko {
+  text-align: left;
+  border-left: 0;
+  border-radius: 2px;
+  padding: 14px 18px;
+  font-size: 16px;
+  line-height: 1.8;
+  font-family: "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+.student-shell .passage-app :is(.psg-ko, .psg-kobtn) {
+  border-radius: 4px;
+  font-size: 16px;
+  text-align: left;
+}
+.student-shell .passage-app .psg-tip {
+  font-size: 14px;
+  text-align: left;
+  margin: 16px 0 24px;
+}
+.student-shell .passage-app .psg-words-t {
+  font-size: 16px;
+  letter-spacing: 0;
+  margin-top: 32px;
+}
+.student-shell .passage-app .psg-words :is(.vw, .vm) {
+  font-size: 16px;
+}
+.student-shell .learning-path {
+  display: flex;
+  list-style: none;
+  gap: 0;
+  margin: 28px 0;
+  border-bottom: 1px solid var(--border);
+}
+.student-shell .learning-path li {
+  padding: 10px 22px 12px 0;
+  color: var(--gray);
+  font-size: 14px;
+}
+.student-shell .learning-path li[aria-current="step"] {
+  color: var(--navy);
+  font-weight: 700;
+  border-bottom: 2px solid var(--navy);
+}
+.student-shell .empty-msg {
+  padding: 36px 20px;
+  background: var(--white);
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  font-size: 15px;
+}
+.student-shell > footer {
+  font-size: 12px;
+  padding-bottom: 4px;
+}
+.student-shell .demo-notice {
+  font-size: 12px;
+  padding-bottom: 28px;
+}
+.student-shell .score-records table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.student-shell .score-records caption {
+  text-align: left;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.student-shell .score-records :is(th, td) {
+  text-align: left;
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.student-shell .score-records thead {
+  color: var(--gray);
+}
+.student-shell .score-records small {
+  display: block;
+  color: var(--red);
+  font-size: 11px;
+}
+.student-shell .score-records p {
+  font-size: 12px;
+  color: var(--gray);
+  margin-top: 12px;
+}
+.student-shell .review-empty p {
+  margin: 12px 0;
+  color: var(--gray);
+}
+@media (max-width: 760px) {
+  .student-shell .site-header {
+    padding: 18px 20px 0;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .student-shell .tab-nav {
+    margin: 10px -4px 0;
+    width: calc(100% + 8px);
+  }
+  .student-shell .tab-btn {
+    flex: 1;
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+  .student-shell .site-header:not(:has(.tab-nav.show)) {
+    padding-bottom: 18px;
+  }
+  .student-shell .container,
+  .student-shell .container.study-container {
+    padding: 32px 20px 40px;
+  }
+  .student-shell #login-section {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 0;
+  }
+  .student-shell .login-intro h1 {
+    margin-bottom: 14px;
+  }
+  .student-shell .intro-lead {
+    font-size: 21px;
+    margin-bottom: 12px;
+  }
+  .student-shell .notebook-contents {
+    display: none;
+  }
+  .student-shell .login-entry {
+    padding: 24px;
+  }
+  .student-shell .score-heading {
+    display: block;
+    margin-bottom: 20px;
+  }
+  .student-shell .score-heading p {
+    margin-top: 10px;
+  }
+  .student-shell .score-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .student-shell .score-history {
+    border: 0;
+    border-top: 2px solid var(--navy);
+    padding: 24px 0 0;
+  }
+  .student-shell .next-study {
+    margin-top: 20px;
+  }
+  .student-shell :is(.vocab-app, .passage-app) .panel {
+    padding: 20px 16px;
+  }
+  .student-shell :is(.vocab-app, .passage-app) .study-actions {
+    gap: 6px;
+    margin: 20px 0;
+  }
+  .student-shell :is(.vocab-app, .passage-app) .study-actions .day-chip {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+  .student-shell :is(.vocab-app, .passage-app) .mode-row {
+    grid-template-columns: 1fr;
+  }
+  .student-shell .vocab-app .flashcard {
+    height: 300px;
+  }
+  .student-shell .vocab-app .ans-row {
+    flex-wrap: wrap;
+  }
+  .student-shell .vocab-app .ans-row input {
+    flex-basis: 100%;
+  }
+  .student-shell .vocab-app .ans-row button {
+    min-height: 48px;
+    width: 100%;
+  }
+  .student-shell .passage-app .psg-en {
+    font-size: 19px;
+    line-height: 1.85;
+  }
+  .student-shell .passage-app .sen-ko {
+    font-size: 15px;
+    padding: 12px;
+  }
+  .student-shell .learning-path li {
+    padding-right: 16px;
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .student-shell *,
+  .student-shell *::before,
+  .student-shell *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
