@@ -18,11 +18,20 @@ import {
 import type { LoginData } from "./gateway";
 import { scoreChange } from "./scoreChange";
 
-function Card({ title, children }: { title: string; children: ReactNode }) {
+function Card({
+  title,
+  aside,
+  children,
+}: {
+  title: string;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <div className="card">
       <div className="card-header">
         <h2>{title}</h2>
+        {aside}
       </div>
       <div className="card-body">{children}</div>
     </div>
@@ -55,15 +64,18 @@ function ItemCell({ item, row }: { item: Item; row: ScoreRow }) {
   const below = isBelowCut(value, item.cut);
   const passed = below && row.retest_pass?.[item.key] === true;
   return (
-    <div className={`score-item${below && !passed ? " below-cut" : ""}`}>
-      <div className="score-label">{item.label || "-"}</div>
-      <div className="score-value">
+    <tr className={`score-item${below && !passed ? " below-cut" : ""}`}>
+      <th scope="row" className="score-label">{item.label || "-"}</th>
+      <td className="score-value">
         {value ?? "-"}
         <span className="score-max"> / {item.max ?? ""}</span>
-      </div>
-      {passed && <div className="retest-pass">재시험 통과</div>}
-      {below && !passed && <div className="retest-target">재시험 대상</div>}
-    </div>
+      </td>
+      <td className="score-status">
+        {passed ? <span className="retest-pass">재시험 통과</span> :
+          below ? <span className="retest-target">재시험 대상</span> :
+          <span>{value == null ? "미기재" : "통과"}</span>}
+      </td>
+    </tr>
   );
 }
 function Meta({ label, value }: { label: string; value: ReactNode }) {
@@ -77,27 +89,14 @@ function Meta({ label, value }: { label: string; value: ReactNode }) {
 function Total({
   value,
   max,
-  mock = false,
 }: {
   value: number | null;
   max: number;
-  mock?: boolean;
 }) {
   return (
-    <div
-      className="score-item total"
-      style={mock ? { borderRadius: 12, marginBottom: 10 } : undefined}
-    >
-      <div className="score-label">총점</div>
-      <div>
-        <span
-          className="score-value"
-          style={mock ? { color: "white" } : undefined}
-        >
-          {value ?? "-"}
-        </span>
-        <span className="score-max"> / {max}</span>
-      </div>
+    <div className="total">
+      <span className="total-value">{value ?? "-"}</span>
+      <span className="total-max"> / {max}점</span>
     </div>
   );
 }
@@ -126,9 +125,14 @@ function WeeklyScore({ data, id }: { data: LoginData; id: number }) {
         : rate >= 70
           ? "#815316"
           : "#c0392b";
-  const memo = row.clinic_memo?.trim();
+
   return (
-    <Card title="점수 결과">
+    <Card
+      title={week?.label || "점수 결과"}
+      aside={
+        <Total value={total} max={items.reduce((a, i) => a + (i.max || 0), 0)} />
+      }
+    >
       {row.attendance === false && (
         <Notice title="결석">
           이번 주 수업에 결석했습니다.
@@ -140,15 +144,10 @@ function WeeklyScore({ data, id }: { data: LoginData; id: number }) {
           )}
         </Notice>
       )}
-      <div className={`score-grid items-${items.length}`}>
-        {items.map((item) => (
-          <ItemCell key={item.key} item={item} row={row} />
-        ))}
-        <Total
-          value={total}
-          max={items.reduce((a, i) => a + (i.max || 0), 0)}
-        />
-      </div>
+      <table className={`score-table items-${items.length}`} aria-label="평가 항목별 점수">
+        <thead><tr><th scope="col">평가 항목</th><th scope="col">점수 / 만점</th><th scope="col">확인 사항</th></tr></thead>
+        <tbody>{items.map((item) => <ItemCell key={item.key} item={item} row={row} />)}</tbody>
+      </table>
       <div className="meta-grid">
         <Meta
           label="평균"
@@ -171,16 +170,7 @@ function WeeklyScore({ data, id }: { data: LoginData; id: number }) {
           </div>
         </div>
       )}
-      {memo && (
-        <Notice title="클리닉 안내">
-          {memo.split("\n").map((line, index) => (
-            <span key={index}>
-              {index > 0 && <br />}
-              {line}
-            </span>
-          ))}
-        </Notice>
-      )}
+
     </Card>
   );
 }
@@ -220,22 +210,18 @@ function MockScore({ data, id }: { data: LoginData; id: number }) {
     (items.length > 1 ||
       items.some((i) => isBelowCut(itemVal(row, i.key), i.cut)));
   return (
-    <Card title="모의고사 점수">
+    <Card
+      title="모의고사 점수"
+      aside={
+        <Total value={total} max={items.reduce((a, i) => a + (i.max || 0), 0)} />
+      }
+    >
       {showItems && (
-        <div
-          className={`score-grid items-${items.length}`}
-          style={{ marginBottom: 10 }}
-        >
-          {items.map((item) => (
-            <ItemCell key={item.key} item={item} row={row} />
-          ))}
-        </div>
+        <table className={`score-table items-${items.length}`} aria-label="모의고사 항목별 점수">
+          <thead><tr><th scope="col">평가 항목</th><th scope="col">점수 / 만점</th><th scope="col">확인 사항</th></tr></thead>
+          <tbody>{items.map((item) => <ItemCell key={item.key} item={item} row={row} />)}</tbody>
+        </table>
       )}
-      <Total
-        value={total}
-        max={items.reduce((a, i) => a + (i.max || 0), 0)}
-        mock
-      />
       <div className="meta-grid">
         <Meta
           label="평균"
@@ -268,10 +254,10 @@ function ScoreChart({ data }: { data: LoginData }) {
           {
             label: "총점",
             data: series.values,
-            borderColor: "#315b4c",
-            backgroundColor: "rgba(49,91,76,0.08)",
+            borderColor: "#6236b5",
+            backgroundColor: "rgba(98,54,181,0.08)",
             borderWidth: 2.5,
-            pointBackgroundColor: "#315b4c",
+            pointBackgroundColor: "#6236b5",
             pointRadius: 5,
             pointHoverRadius: 7,
             tension: 0,
@@ -377,6 +363,7 @@ export default function Scores({
   const mock = selected.startsWith("m");
   const id = Number(selected.slice(1));
   const cumulative = summary(data.weeks, data.myScores);
+  const clinicMemo = !mock ? data.myScores.find((row) => row.week_id === id)?.clinic_memo?.trim() : undefined;
   const records = sortByDateDesc(
     data.weeks,
     (week) => week.test_date || week.label || "",
@@ -394,39 +381,31 @@ export default function Scores({
   return (
     <section id="result-section" style={{ display: "block" }}>
       <div className="score-heading">
-        <h1>나의 성적 기록</h1>
-        <p>한 번의 점수보다, 쌓여가는 배움.</p>
-      </div>
-      <div className="student-info">
-        <div className="student-name" id="result-name">
-          {data.student.name}
+        <div>
+          <h1>나의 성적 기록</h1>
+          <p>시험별 결과와 다시 확인할 내용을 살펴보세요.</p>
         </div>
-        <div className="student-class" id="result-class">
-          {data.student.classes?.name || ""}
-        </div>
+        <select
+          className="period-select"
+          id="period-select"
+          aria-label="주차 선택"
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          disabled={!periods.options.length}
+        >
+          {periods.options.length ? (
+            periods.options.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.text}
+              </option>
+            ))
+          ) : (
+            <option value="">등록된 주차가 없습니다.</option>
+          )}
+        </select>
       </div>
       <div className="score-layout">
         <div className="score-detail">
-          <Card title="주차 선택">
-            <select
-              className="period-select"
-              id="period-select"
-              aria-label="주차 선택"
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              disabled={!periods.options.length}
-            >
-              {periods.options.length ? (
-                periods.options.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.text}
-                  </option>
-                ))
-              ) : (
-                <option value="">등록된 주차가 없습니다.</option>
-              )}
-            </select>
-          </Card>
           <div id="score-content" style={{ display: mock ? "none" : "block" }}>
             {selected && !mock ? (
               <WeeklyScore data={data} id={id} />
@@ -442,6 +421,14 @@ export default function Scores({
           </div>
         </div>
         <aside className="score-history" aria-label="학습 기록과 다음 공부">
+          {clinicMemo && (
+            <section className="clinic-section">
+              <h2>클리닉 안내</h2>
+              {clinicMemo.split("\n").map((line, index) => (
+                <p key={index}>{line}</p>
+              ))}
+            </section>
+          )}
           {!mock && data.myScores.length > 0 && (
             <>
               <div className="summary-grid" id="summary-grid">
@@ -495,7 +482,7 @@ export default function Scores({
           )}
           {onStudy && (
             <section className="next-study">
-              <h2>이제, 다음 공부</h2>
+              <h2>이어서 공부하기</h2>
               <p>결과를 확인했다면 연습으로 이어가요.</p>
               <button onClick={() => onStudy("vocab")}>
                 단어 연습하기 <span aria-hidden="true">→</span>

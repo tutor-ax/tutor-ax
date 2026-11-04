@@ -1,183 +1,274 @@
 .admin-app {
-  --admin-navy: #0f1f3d;
-  --admin-gold: #c8a96e;
-  --admin-cream: #f8f5f0;
-  --admin-border: #e8e4df;
+  --admin-ink: #18181b;
+  --admin-muted: #61616b;
+  --admin-accent: #6236b5;
+  --admin-soft: #f6f6f8;
+  --admin-border: #dedee4;
   min-height: 100vh;
-  background: var(--admin-cream);
-  color: var(--admin-navy);
+  background: white;
+  color: var(--admin-ink);
   font:
-    14px/1.6 system-ui,
+    14px/1.6 "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    system-ui,
     sans-serif;
+  accent-color: var(--admin-accent);
+  scrollbar-color: #aaa7b2 var(--admin-soft);
 }
 .admin-app * {
   box-sizing: border-box;
+}
+.admin-app ::selection {
+  background: #e5d7fa;
 }
 .admin-app header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 20px;
-  background: var(--admin-navy);
-  color: white;
+  gap: 16px;
+  /* theme.css paints a navy bar on bare `header`; the admin shell is white. */
+  background: #fff;
+  padding: 24px max(24px, calc((100% - 1120px) / 2));
+  border-bottom: 1px solid var(--admin-border);
 }
 .admin-app h1 {
   margin: 0;
-  font-size: 17px;
-  color: white;
+  font-size: 20px;
+  color: var(--admin-ink);
 }
 .admin-app header span {
-  color: var(--admin-gold);
+  color: var(--admin-muted);
   font-size: 12px;
 }
 .admin-app nav {
   display: flex;
   overflow-x: auto;
-  background: white;
+  padding-inline: max(16px, calc((100% - 1120px) / 2));
   border-bottom: 1px solid var(--admin-border);
 }
 .admin-app button {
-  padding: 10px 16px;
+  min-height: 44px;
+  padding: 9px 16px;
   margin: 4px;
   border: 1px solid var(--admin-border);
-  border-radius: 8px;
-  background: var(--admin-navy);
-  color: white;
+  border-radius: 5px;
+  background: white;
+  color: var(--admin-ink);
   font:
-    600 13px system-ui,
+    600 13px/1.5 system-ui,
     sans-serif;
   cursor: pointer;
   white-space: nowrap;
 }
+.admin-app button:hover {
+  background: var(--admin-soft);
+}
+.admin-app button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .admin-app nav button {
+  flex-shrink: 0;
   border: 0;
   border-radius: 0;
   margin: 0;
-  padding: 15px 18px;
-  background: white;
-  color: #676767;
-  border-bottom: 2px solid transparent;
+  padding: 16px;
+  color: var(--admin-muted);
+  border-bottom: 3px solid transparent;
 }
 .admin-app nav button[aria-pressed="true"] {
-  color: var(--admin-navy);
-  border-bottom-color: var(--admin-gold);
+  color: var(--admin-ink);
+  border-bottom-color: var(--admin-accent);
 }
 .admin-app main {
-  max-width: 1200px;
-  padding: 16px;
+  max-width: 1168px;
+  padding: 32px 24px 64px;
   margin: auto;
+  min-width: 0;
 }
 .admin-app section {
   background: white;
-  padding: 18px;
-  border-radius: 14px;
-  margin: 16px 0;
-  box-shadow: 0 4px 20px #0f1f3d15;
+  padding: 0;
+  margin: 32px 0;
 }
 .admin-app h2 {
-  font-size: 16px;
-  border-bottom: 1px solid var(--admin-border);
-  padding-bottom: 14px;
+  font-size: 26px;
   margin: 0 0 16px;
+  letter-spacing: -0.02em;
+}
+.admin-app h3 {
+  font-size: 17px;
 }
 .admin-app p {
-  margin: 10px 0;
+  margin: 12px 0;
+}
+.admin-app main > p:first-child {
+  color: var(--admin-muted);
+  font-size: 12px;
+  margin-top: 0;
 }
 .admin-app label {
   display: inline-flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
-  margin: 6px 10px 6px 0;
+  font-size: 13px;
+  margin: 6px 16px 6px 0;
+}
+/* The add-item row aligns its field with the button on a shared baseline. */
+.admin-app .item-add {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.admin-app .item-add label {
+  margin: 0;
+}
+.admin-app .item-add input {
+  width: 240px;
+  height: 44px;
+}
+.admin-app .item-add button {
+  height: 44px;
+  margin: 0;
 }
 .admin-app input,
 .admin-app select,
 .admin-app textarea {
   max-width: 100%;
   min-width: 0;
-  padding: 9px 11px;
-  border: 1.5px solid var(--admin-border);
-  border-radius: 8px;
-  background: var(--admin-cream);
-  color: var(--admin-navy);
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  background: white;
+  color: var(--admin-ink);
   font: inherit;
+  caret-color: var(--admin-accent);
+}
+.admin-app input[type="checkbox"] {
+  min-height: 20px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.admin-app input:disabled {
+  background: var(--admin-soft);
+  color: var(--admin-muted);
 }
 .admin-app textarea {
   width: 100%;
   resize: vertical;
 }
-.admin-app input:focus,
-.admin-app select:focus,
-.admin-app textarea:focus,
-.admin-app button:focus-visible {
-  outline: 2px solid var(--admin-gold);
-  outline-offset: 2px;
-}
-.admin-app .item-config {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 4px 0;
-}
-.admin-app .item-config > input {
-  width: 160px;
-}
-.admin-app .item-config label input {
-  width: 100px;
+.admin-app
+  :is(input, select, textarea, button, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--admin-accent);
+  outline-offset: 3px;
 }
 .admin-app summary {
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 650;
+  padding: 12px 0;
 }
 .admin-app details {
-  border-bottom: 1px solid var(--admin-border);
-  padding-bottom: 14px;
-  margin-bottom: 16px;
+  border-block: 1px solid var(--admin-border);
+  padding-bottom: 16px;
+  margin: 24px 0 32px;
 }
 .admin-app .table-scroll {
-  overflow: auto;
+  overflow-x: auto;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
 }
 .admin-app table {
   width: 100%;
   border-collapse: collapse;
   min-width: 560px;
+  font-variant-numeric: tabular-nums;
 }
 .admin-app th,
 .admin-app td {
-  padding: 12px 10px;
+  padding: 12px;
   text-align: left;
   border-bottom: 1px solid var(--admin-border);
+  vertical-align: top;
 }
 .admin-app th {
-  white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 650;
 }
-.admin-app td input[type="number"] {
-  width: 95px;
+.admin-app thead th {
+  background: var(--admin-soft);
+  vertical-align: bottom;
+}
+.admin-app .item-config-table {
+  table-layout: fixed;
+  min-width: 600px;
+}
+.admin-app .config-name {
+  width: 40%;
+}
+.admin-app .config-action {
+  width: 16%;
+}
+.admin-app .item-config td {
+  vertical-align: middle;
+}
+.admin-app .item-config input {
+  width: 100%;
+}
+.admin-app .item-config button {
+  margin: 0;
+}
+.admin-app .score-entry-table {
+  table-layout: fixed;
+}
+.admin-app .score-entry-table th {
+  overflow-wrap: anywhere;
+}
+.admin-app .score-column-detail {
+  display: block;
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+.admin-app .score-entry-table td input:not([type="checkbox"]) {
+  width: 100%;
+}
+.admin-app .score-entry-table tbody th {
+  padding-top: 22px;
+}
+.admin-app .score-entry-table td[aria-label] {
+  padding-top: 22px;
+  font-weight: 650;
 }
 .admin-app .retest {
   display: flex;
+  align-items: center;
   flex-direction: row;
+  gap: 6px;
+  margin: 8px 0 0;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 12px;
 }
 .admin-app .below-cut {
-  border-color: #c0392b;
-  color: #c0392b;
-  background: #fdf0ef;
+  border-color: #b32c36;
+  color: #b32c36;
+  background: #fff7f7;
 }
 .admin-app [role="alert"],
 .admin-app .demo-warning {
-  color: #9e4c0b;
-  background: #fef5ec;
-  padding: 10px;
-  border-radius: 8px;
+  color: #a02530;
+  background: #fff7f7;
+  padding: 12px;
+  border-radius: 5px;
 }
 .admin-app fieldset {
   border: 1px solid var(--admin-border);
-  border-radius: 12px;
-  margin: 14px 0;
+  border-radius: 5px;
+  margin: 16px 0;
   padding: 16px;
 }
 .admin-app fieldset label:last-of-type {
@@ -188,34 +279,57 @@
 }
 .admin-app .history-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--admin-border);
 }
+.admin-app .teacher-memo {
+  border-bottom: 1px solid var(--admin-border);
+  padding-block: 16px;
+  overflow-wrap: anywhere;
+}
 .admin-app [role="dialog"] {
-  padding: 20px;
-  border: 2px solid var(--admin-gold);
+  padding: 24px;
+  border: 2px solid var(--admin-accent);
   background: white;
-  border-radius: 12px;
+  border-radius: 5px;
 }
 .admin-app [role="status"] {
   font-size: 12px;
-  color: #626262;
+  color: var(--admin-muted);
+}
+.admin-app .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+.admin-app .toolbar button {
+  margin: 0;
+}
+.admin-app .toolbar button:first-child {
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+  color: white;
+}
+.admin-app .toolbar button:first-child:hover {
+  background: #502b96;
 }
 @media (max-width: 600px) {
   .admin-app main {
-    padding: 10px;
+    padding: 24px 16px 48px;
   }
-  .admin-app section {
-    padding: 12px;
-  }
-  .admin-app .item-config {
-    gap: 2px;
-  }
-  .admin-app .item-config > input {
-    width: 100%;
+  .admin-app header {
+    padding: 20px 16px;
   }
   .admin-app h1 {
-    font-size: 15px;
+    font-size: 18px;
+  }
+  .admin-app h2 {
+    font-size: 24px;
+  }
+  .admin-app section {
+    margin-block: 24px;
   }
 }
