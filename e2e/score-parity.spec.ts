@@ -12,6 +12,7 @@ const origin = "http://127.0.0.1:4173";
 async function isolate(page: Page, legacy = false, loggedIn = true) {
   const external: string[] = [];
   const errors: string[] = [];
+  let signedOut = false;
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
@@ -40,6 +41,22 @@ async function isolate(page: Page, legacy = false, loggedIn = true) {
         json: legacy && loggedIn ? fixture : {},
       });
     }
+    // The React app reads scores from this same-origin endpoint. It is served
+    // from the fixture so the comparison stays offline and deterministic; any
+    // OTHER /api/ path would be an unexpected call and still fails the test.
+    if (url.pathname === "/api/parent-login") {
+      // Mirror the real cookie lifecycle: logging out must make later
+      // session lookups fail, or "reload after logout" proves nothing.
+      if (route.request().method() === "DELETE") {
+        signedOut = true;
+        return route.fulfill({ status: 200, json: { ok: true } });
+      }
+      const active = loggedIn && !signedOut;
+      return route.fulfill({
+        status: active ? 200 : 401,
+        json: active ? fixture : { error: "session_expired" },
+      });
+    }
     if (url.pathname.startsWith("/api/")) {
       external.push(`Unexpected API call: ${url.pathname}`);
       return route.abort();
@@ -51,7 +68,6 @@ async function isolate(page: Page, legacy = false, loggedIn = true) {
 
 async function enterDemo(page: Page) {
   await page.goto("/");
-  await page.getByTestId("demo-login").click();
   await expect(page.locator("#result-name")).toHaveText("데모 학생");
 }
 
@@ -224,7 +240,9 @@ for (const width of [390, 1440]) {
       page,
       context,
     }, testInfo) => {
-      await isolate(page);
+      // Both pages must show the signed-out login form, so neither side has
+      // a session: loggedIn=false makes parent-login answer 401.
+      await isolate(page, false, false);
       const legacy = await context.newPage();
       await isolate(legacy, true, false);
       await page.goto("/");
@@ -255,9 +273,11 @@ for (const width of [390, 1440]) {
   });
 }
 
-test("demo session survives refresh, navigation and logout without APIs", async ({
+test("the session survives refresh, navigation and logout", async ({
   page,
 }) => {
+  // The session endpoint is now the expected data source; isolate() still
+  // fails the test on any OTHER /api/ path or cross-origin call.
   const safety = await isolate(page);
   await enterDemo(page);
   await page.reload();
