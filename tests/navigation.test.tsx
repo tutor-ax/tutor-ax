@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import App from "../src/App";
-import { createDemoGateway } from "../src/gateway";
+import { signedIn, signedOut } from "./fixtures";
 vi.mock("chart.js/auto", () => ({
   default: class {
     destroy() {}
@@ -13,7 +13,7 @@ beforeEach(() => {
   history.replaceState({}, "", "/");
 });
 it("displays the academy logo in the shared header", () => {
-  render(<App gateway={createDemoGateway(localStorage)} />);
+  render(<App gateway={signedOut()} />);
   expect(screen.getByRole("img", { name: "학원 로고" })).toHaveAttribute(
     "src",
     expect.stringContaining("academy-logo"),
@@ -21,18 +21,25 @@ it("displays the academy logo in the shared header", () => {
 });
 it("opens administrator directly without asking for a real student identity", async () => {
   history.replaceState({}, "", "/admin.html");
-  render(<App gateway={createDemoGateway(localStorage)} />);
+  render(<App gateway={signedIn()} />);
   expect(await screen.findByTestId("admin-workspace")).toBeVisible();
   expect(
     screen.queryByLabelText("학부모 연락처 뒷 4자리"),
   ).not.toBeInTheDocument();
 });
-it("routes student tabs to working study screens instead of migration placeholders", async () => {
-  render(<App gateway={createDemoGateway(localStorage)} />);
-  await waitFor(() => expect(screen.getByRole("button", { name: "데모로 둘러보기" })).toBeEnabled());
-  fireEvent.click(
-    screen.getByRole("button", { name: "데모로 둘러보기" }),
+it("never looks up a student session on the administrator route", async () => {
+  const resume = vi.fn(async () => null);
+  history.replaceState({}, "", "/admin.html");
+  render(
+    <App gateway={{ resume, login: async () => signedIn().login("", ""), logout: async () => {} }} />,
   );
+  expect(await screen.findByTestId("admin-workspace")).toBeVisible();
+  // Admin is independent of the student login; calling resume here would send
+  // a student lookup from an unrelated workspace.
+  expect(resume).not.toHaveBeenCalled();
+});
+it("routes student tabs to working study screens instead of migration placeholders", async () => {
+  render(<App gateway={signedIn()} />);
   await screen.findByText("데모 학생");
   fireEvent.click(screen.getByRole("button", { name: "단어 공부" }));
   expect(await screen.findByTestId("vocab-workspace")).toBeVisible();

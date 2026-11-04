@@ -1,5 +1,4 @@
 import type { Period, ScoreRow } from "./domain";
-import fixture from "./data/demo-score.json";
 
 export interface LoginData {
   student: { id: number; name: string; classes?: { name: string } | null };
@@ -13,57 +12,114 @@ export interface LoginData {
   mockGroupExamMap?: Record<string, number[]>;
 }
 
-/** Demo-only application boundary. No live backend adapter is supplied. */
+/**
+ * Application boundary for student score data.
+ *
+ * The live implementation talks to the existing `parent-login` endpoint, which
+ * owns the session. This app never issues its own session: it reads the
+ * `parent_session` HttpOnly cookie the legacy score screen already set, so a
+ * student who signed in there arrives here still signed in.
+ */
 export interface ScoreGateway {
+  /** Restore an existing session. `null` means signed out — not an error. */
   resume(): Promise<LoginData | null>;
-  openDemo(): Promise<LoginData>;
+  /** Exchange name + PIN for a session cookie. */
+  login(name: string, pin: string): Promise<LoginData>;
+  /** Clear the session cookie. */
   logout(): Promise<void>;
 }
-export type SessionStorage = Pick<
-  Storage,
-  "getItem" | "setItem" | "removeItem"
->;
-export const DEMO_SESSION_KEY = "tutor-ax.demo-session.v1";
-const demoData = (): LoginData => structuredClone(fixture) as LoginData;
-const SESSION_TTL = 12 * 60 * 60 * 1000;
-export function createDemoGateway(storage: SessionStorage): ScoreGateway {
-  function clear() {
+
+/** Thrown when the server rejected the supplied name/PIN. */
+export class InvalidCredentials extends Error {
+  constructor() {
+    super("invalid_credentials");
+    this.name = "InvalidCredentials";
+  }
+}
+
+/** Thrown when the endpoint is unreachable or answered unusably. */
+export class GatewayUnavailable extends Error {
+  constructor(cause?: unknown) {
+    super("gateway_unavailable", { cause });
+    this.name = "GatewayUnavailable";
+  }
+}
+
+/**
+ * Same-origin path served by the Vercel rewrite in front of the Supabase
+ * function. It must stay same-origin: the session cookie is `SameSite=Lax`,
+ * so a cross-origin call would silently drop it.
+ */
+export const PARENT_LOGIN_PATH = "/api/parent-login";
+
+async function readJson(response: Response): Promise<unknown> {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch (cause) {
+    throw new GatewayUnavailable(cause);
+  }
+}
+
+function asLoginData(payload: unknown): LoginData {
+  const data = payload as Partial<LoginData> | null;
+  // A session response without a student is unusable; treat it as a fault
+  // rather than rendering an empty screen that looks like "no records".
+  if (!data || typeof data !== "object" || !data.student?.id) {
+    throw new GatewayUnavailable();
+  }
+  return {
+    student: data.student,
+    weeks: data.weeks ?? [],
+    myScores: data.myScores ?? [],
+    rankScores: data.rankScores ?? [],
+    groupWeekMap: data.groupWeekMap,
+    exams: data.exams ?? [],
+    myMockScores: data.myMockScores ?? [],
+    mockRankScores: data.mockRankScores ?? [],
+    mockGroupExamMap: data.mockGroupExamMap,
+  };
+}
+
+export function createApiGateway(
+  path: string = PARENT_LOGIN_PATH,
+  fetchImpl: typeof fetch = fetch,
+): ScoreGateway {
+  async function call(init: RequestInit): Promise<Response> {
     try {
-      storage.removeItem(DEMO_SESSION_KEY);
-    } catch {
-      /* Storage can be disabled. */
+      return await fetchImpl(path, {
+        // The session lives in an HttpOnly cookie, so every call must carry
+        // credentials even though the request is same-origin.
+        credentials: "same-origin",
+        ...init,
+      });
+    } catch (cause) {
+      throw new GatewayUnavailable(cause);
     }
   }
   return {
     async resume() {
-      try {
-        const saved = JSON.parse(storage.getItem(DEMO_SESSION_KEY) || "null");
-        if (
-          saved?.version === 1 &&
-          Number.isFinite(saved.expiresAt) &&
-          saved.expiresAt > Date.now()
-        ) {
-          return demoData();
-        }
-      } catch {
-        /* Malformed or unavailable storage means signed out. */
-      }
-      clear();
-      return null;
+      const response = await call({ method: "GET" });
+      // 401 is the documented "no valid session" answer, not a failure.
+      if (response.status === 401) return null;
+      if (!response.ok) throw new GatewayUnavailable();
+      return asLoginData(await readJson(response));
     },
-    async openDemo() {
-      try {
-        storage.setItem(
-          DEMO_SESSION_KEY,
-          JSON.stringify({ version: 1, expiresAt: Date.now() + SESSION_TTL }),
-        );
-      } catch {
-        /* Demo works in memory; refresh will require re-entry. */
-      }
-      return demoData();
+    async login(name, pin) {
+      const response = await call({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, pin }),
+      });
+      if (response.status === 401) throw new InvalidCredentials();
+      if (!response.ok) throw new GatewayUnavailable();
+      return asLoginData(await readJson(response));
     },
     async logout() {
-      clear();
+      // The server clears the cookie; a failure here must still sign the user
+      // out locally, so the caller treats this as best-effort.
+      await call({ method: "DELETE" });
     },
   };
 }

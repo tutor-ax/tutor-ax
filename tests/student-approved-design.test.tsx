@@ -1,12 +1,11 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import App from "../src/App";
-import { createDemoGateway } from "../src/gateway";
+import { signedIn, signedOut } from "./fixtures";
 vi.mock("chart.js/auto", () => ({ default: class { destroy() {} } }));
 afterEach(() => { cleanup(); localStorage.clear(); history.replaceState({}, "", "/"); });
 it("aligns dynamic score items in a semantic table and keeps clinic in the supporting column", async () => {
-  render(<App gateway={createDemoGateway(localStorage)} />);
-  fireEvent.click(await screen.findByTestId("demo-login"));
+  render(<App gateway={signedIn()} />);
   await screen.findByText("데모 학생");
   const table = screen.getByRole("table", { name: "평가 항목별 점수" });
   expect(within(table).getByRole("columnheader", { name: "확인 사항" })).toBeVisible();
@@ -18,8 +17,7 @@ it("aligns dynamic score items in a semantic table and keeps clinic in the suppo
   expect(screen.getByRole("table", { name: "평가 항목별 점수" })).toBeVisible();
 });
 it("hoists the total into the score card heading and the student label into the header", async () => {
-  render(<App gateway={createDemoGateway(localStorage)} />);
-  fireEvent.click(await screen.findByTestId("demo-login"));
+  render(<App gateway={signedIn()} />);
   await screen.findByText("데모 학생");
   // The total belongs beside the exam name, not as another row of the table.
   const card = document.querySelector("#score-content .card") as HTMLElement;

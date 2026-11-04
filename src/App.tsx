@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { LoginData, ScoreGateway } from "./gateway";
+import { InvalidCredentials, type LoginData, type ScoreGateway } from "./gateway";
 import Scores from "./Scores";
 import academyLogo from "./assets/academy-logo.svg";
 import Admin from "./admin/Admin";
@@ -18,7 +18,17 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
   const [pin, setPin] = useState("");
   const [route, setRoute] = useState(locationRoute);
   const pinInput = useRef<HTMLInputElement>(null);
+  // Only the admin/student split matters for session lookup; switching between
+  // student tabs must not refetch, so the effect depends on this flag and not
+  // on the full route.
+  const isAdminRoute = route === "admin";
   useEffect(() => {
+    // The administrator shell is independent of the student session: looking
+    // one up here would leak a student lookup into an unrelated workspace.
+    if (isAdminRoute) {
+      setBusy(false);
+      return;
+    }
     let alive = true;
     gateway
       .resume()
@@ -27,7 +37,7 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
       })
       .catch(() => {
         if (alive)
-          setError("세션을 확인하지 못했습니다. 데모로 다시 들어가 주세요.");
+          setError("세션을 확인하지 못했습니다. 다시 로그인해주세요.");
       })
       .finally(() => {
         if (alive) setBusy(false);
@@ -35,7 +45,7 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
     return () => {
       alive = false;
     };
-  }, [gateway]);
+  }, [gateway, isAdminRoute]);
   useEffect(() => {
     const changed = () => setRoute(locationRoute());
     window.addEventListener("popstate", changed);
@@ -50,19 +60,6 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
     window.dispatchEvent(new PopStateEvent("popstate"));
     setRoute(locationRoute());
   }
-  async function openDemo() {
-    setBusy(true);
-    setError("");
-    try {
-      setData(await gateway.openDemo());
-      setName("");
-      setPin("");
-    } catch {
-      setError("데모 데이터를 불러오지 못했습니다. 다시 시도해주세요.");
-    } finally {
-      setBusy(false);
-    }
-  }
   async function logout() {
     setData(null);
     setName("");
@@ -72,22 +69,38 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
     try {
       await gateway.logout();
     } catch {
-      setError(
-        "세션 삭제를 확인하지 못했습니다. 브라우저 저장소를 확인해주세요.",
-      );
+      // The local session is already cleared; a failed server call only means
+      // the cookie may outlive this tab, so say that rather than blocking.
+      setError("로그아웃은 되었지만 서버 확인에 실패했습니다.");
     } finally {
       setBusy(false);
     }
     navigate("/");
   }
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    setError(
-      !name.trim() || !pin.trim()
-        ? "이름과 PIN을 모두 입력해주세요."
-        : "운영 로그인이 연결되지 않은 개발본입니다. 데모로 둘러보기를 이용해주세요.",
-    );
-    setPin("");
+    if (!name.trim() || !pin.trim()) {
+      setError("이름과 PIN을 모두 입력해주세요.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      setData(await gateway.login(name.trim(), pin.trim()));
+      setName("");
+      setPin("");
+    } catch (cause) {
+      setError(
+        cause instanceof InvalidCredentials
+          ? "이름 또는 PIN이 올바르지 않습니다."
+          : "로그인하지 못했습니다. 잠시 후 다시 시도해주세요.",
+      );
+      // Never keep a PIN around after a failed attempt.
+      setPin("");
+      pinInput.current?.focus();
+    } finally {
+      setBusy(false);
+    }
   }
   const returnToScores = () => navigate("/scores");
   // Admin owns its shell. Never nest it inside the student layout.
@@ -194,10 +207,6 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
                   <h2>학생 로그인</h2>
                 </div>
                 <div className="card-body">
-                  <p className="login-guidance">
-                    현재는 합성 데이터로 체험하는 데모입니다. 실제 이름이나
-                    연락처를 입력하지 마세요.
-                  </p>
                   <form onSubmit={submit}>
                     <div className="form-group">
                       <label htmlFor="input-name">학생 이름</label>
@@ -261,17 +270,6 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
                   </>
                 )}
               </div>
-              <button
-                className="btn btn-secondary"
-                data-testid="demo-login"
-                disabled={busy}
-                onClick={openDemo}
-              >
-                데모로 둘러보기
-              </button>
-              <p className="login-footnote">
-                운영 로그인은 아직 연결되지 않았어요.
-              </p>
             </div>
           </section>
         ) : route === "vocab" ? (
@@ -292,12 +290,20 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
           />
         )}
       </main>
-      <footer>© Tutor AX 데모 학원 영어과</footer>
-      <aside className="demo-notice" data-testid="demo-notice">
-        Tutor AX · 학습 체험 데모
-        <br />
-        합성 테스트 데이터 전용 · 운영 로그인·DB·문자 발송 연결 없음
-      </aside>
+      <footer>© 용산대성N학원 영어과</footer>
+      {/*
+        Scores run on the live academy database. Vocabulary, passages and the
+        administrator workspace are still local synthetic demos, so the notice
+        stays on those routes only — removing it everywhere would misrepresent
+        unmigrated screens as real records.
+      */}
+      {route !== "scores" && (
+        <aside className="demo-notice" data-testid="demo-notice">
+          이 화면은 아직 이전 전입니다
+          <br />
+          합성 데이터 · 이 브라우저에만 기록 · 실제 성적과 무관
+        </aside>
+      )}
     </div>
   );
 }
