@@ -572,102 +572,169 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                 <p>재시험 통과를 표시해도 최초 점수는 변경되지 않습니다.</p>
                 <details open>
                   <summary>채점 항목 설정</summary>
-                  {week.items.map((i) => (
-                    <div className="item-config" key={i.id}>
-                      <input
-                        aria-label={`${i.name} 항목 이름`}
-                        value={i.name}
-                        onChange={(e) =>
-                          updateWeek({
-                            ...week,
-                            items: week.items.map((x) =>
-                              x.id === i.id
-                                ? { ...x, name: e.target.value }
-                                : x,
-                            ),
-                          })
-                        }
-                      />
-                      {(["max", "cut"] as const).map((k) => (
-                        <label key={k}>
-                          {k === "max" ? "만점" : "커트라인"}
-                          <input
-                            aria-label={`${i.name} ${k === "max" ? "만점" : "커트라인"}`}
-                            type="number"
-                            value={i[k]}
-                            onChange={(e) =>
-                              updateWeek({
-                                ...week,
-                                items: week.items.map((x) =>
-                                  x.id === i.id
-                                    ? { ...x, [k]: Number(e.target.value) }
-                                    : x,
-                                ),
-                              })
-                            }
-                          />
-                        </label>
-                      ))}
-                      <button
-                        onClick={() =>
-                          updateWeek({
-                            ...week,
-                            items: week.items.filter((x) => x.id !== i.id),
-                          })
-                        }
-                      >
-                        {i.name} 항목 삭제
-                      </button>
-                    </div>
-                  ))}
-                  <label>
-                    새 항목 이름
-                    <input
-                      value={itemName}
-                      onChange={(e) => setItemName(e.target.value)}
-                    />
-                  </label>
-                  <button
-                    onClick={() => {
-                      if (!itemName.trim()) return;
-                      updateWeek({
-                        ...week,
-                        items: [
-                          ...week.items,
-                          {
-                            id: id(),
-                            name: itemName.trim(),
-                            max: 100,
-                            cut: 80,
-                          },
-                        ],
-                      });
-                      setItemName("");
-                    }}
+                  <div
+                    className="table-scroll"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="채점 항목 설정 가로 스크롤"
                   >
-                    항목 추가
-                  </button>
+                    <table
+                      className="item-config-table"
+                      aria-label="채점 항목 설정"
+                    >
+                      <colgroup>
+                        <col className="config-name" />
+                        <col />
+                        <col />
+                        <col className="config-action" />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th scope="col">항목명</th>
+                          <th scope="col">만점</th>
+                          <th scope="col">커트라인</th>
+                          <th scope="col">관리</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {week.items.map((i) => (
+                          <tr className="item-config" key={i.id}>
+                            <td>
+                              <input
+                                aria-label={`${i.name} 항목 이름`}
+                                value={i.name}
+                                onChange={(e) =>
+                                  updateWeek({
+                                    ...week,
+                                    items: week.items.map((x) =>
+                                      x.id === i.id
+                                        ? { ...x, name: e.target.value }
+                                        : x,
+                                    ),
+                                  })
+                                }
+                              />
+                            </td>
+                            {(["max", "cut"] as const).map((k) => (
+                              <td key={k}>
+                                <input
+                                  aria-label={`${i.name} ${k === "max" ? "만점" : "커트라인"}`}
+                                  type="number"
+                                  value={i[k]}
+                                  onChange={(e) =>
+                                    updateWeek({
+                                      ...week,
+                                      items: week.items.map((x) =>
+                                        x.id === i.id
+                                          ? {
+                                              ...x,
+                                              [k]: Number(e.target.value),
+                                            }
+                                          : x,
+                                      ),
+                                    })
+                                  }
+                                />
+                              </td>
+                            ))}
+                            <td>
+                              <button
+                                aria-label={`${i.name} 항목 삭제`}
+                                onClick={() =>
+                                  updateWeek({
+                                    ...week,
+                                    items: week.items.filter(
+                                      (x) => x.id !== i.id,
+                                    ),
+                                  })
+                                }
+                              >
+                                삭제
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="item-add">
+                    <label>
+                      새 항목 이름
+                      <input
+                        value={itemName}
+                        onChange={(e) => setItemName(e.target.value)}
+                      />
+                    </label>
+                    <button
+                      onClick={() => {
+                        if (!itemName.trim()) return;
+                        updateWeek({
+                          ...week,
+                          items: [
+                            ...week.items,
+                            {
+                              id: id(),
+                              name: itemName.trim(),
+                              max: 100,
+                              cut: 80,
+                            },
+                          ],
+                        });
+                        setItemName("");
+                      }}
+                    >
+                      항목 추가
+                    </button>
+                  </div>
                 </details>
                 {invalid && (
                   <p role="alert">
                     점수 범위 또는 만점/커트라인 설정을 확인하세요.
                   </p>
                 )}
-                <div className="table-scroll">
-                  <table>
+                <div
+                  className="table-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="학생별 점수 가로 스크롤"
+                >
+                  <table
+                    className="score-entry-table"
+                    aria-label="학생별 점수 입력"
+                    style={{
+                      minWidth:
+                        320 + week.items.length * 176 + (mock ? 320 : 0),
+                    }}
+                  >
+                    <colgroup>
+                      <col style={{ width: 160 }} />
+                      {week.items.map((i) => (
+                        <col key={i.id} style={{ width: 176 }} />
+                      ))}
+                      <col style={{ width: 160 }} />
+                      {mock && (
+                        <>
+                          <col style={{ width: 100 }} />
+                          <col style={{ width: 220 }} />
+                        </>
+                      )}
+                    </colgroup>
                     <thead>
                       <tr>
-                        <th>학생</th>
+                        <th scope="col">학생</th>
                         {week.items.map((i) => (
-                          <th key={i.id}>
-                            {i.name} / {i.max}
+                          <th scope="col" key={i.id}>
+                            {i.name}
+                            <span className="score-column-detail">
+                              {i.max}점 만점 · 기준 {i.cut}
+                            </span>
                           </th>
                         ))}
-                        <th>원점수 합계</th>
+                        <th scope="col">원점수 합계</th>
                         {mock && (
                           <>
-                            <th>미응시</th>
-                            <th>메모</th>
+                            <th scope="col">미응시</th>
+                            <th scope="col">메모</th>
                           </>
                         )}
                       </tr>
@@ -675,7 +742,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                     <tbody>
                       {current.students.map((s) => (
                         <tr key={s.id}>
-                          <th>{s.name}</th>
+                          <th scope="row">{s.name}</th>
                           {week.items.map((i) => {
                             const m = mark(s.id, i.id);
                             const low =

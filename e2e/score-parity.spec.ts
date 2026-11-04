@@ -59,6 +59,74 @@ async function normalizedText(page: Page, selector: string) {
   return (await page.locator(selector).innerText()).replace(/\s+/g, " ").trim();
 }
 
+/**
+ * The approved student redesign replaces the legacy score markup (stacked
+ * `.score-grid` cards, clinic memo inside the score card) with a semantic table
+ * plus a supporting column, so raw innerText can no longer match legacy.
+ * Parity is therefore asserted on the DATA the screen reports — per-item label,
+ * score, maximum, retest state, the total, and the clinic memo wherever it is
+ * rendered — which is what must never drift.
+ */
+async function scoreData(page: Page, selector: string) {
+  return page.$eval(selector, (root) => {
+    const clean = (node: Element | null | undefined) =>
+      (node?.textContent ?? "").replace(/\s+/g, " ").trim();
+    const number = (text: string) => {
+      const match = text.replace(/[,\s]/g, "").match(/-?\d+(\.\d+)?/);
+      return match ? Number(match[0]) : null;
+    };
+    const rows = [...root.querySelectorAll(".score-item")].filter(
+      (row) => !row.classList.contains("total"),
+    );
+    const items = rows.map((row) => {
+      const text = clean(row);
+      return {
+        label: clean(row.querySelector(".score-label")),
+        value: number(clean(row.querySelector(".score-value"))),
+        max: number(clean(row.querySelector(".score-max"))),
+        retestPass: /재시험 통과/.test(text),
+        retestTarget: /재시험 대상/.test(text),
+      };
+    });
+    // Legacy renders the total as a `.score-item.total`; the redesign hoists it
+    // into the card header beside the exam name.
+    const legacyTotal = root.querySelector(".score-item.total");
+    const header = root.querySelector(".card-header");
+    const total = legacyTotal
+      ? {
+          value: number(clean(legacyTotal.querySelector(".score-value"))),
+          max: number(clean(legacyTotal.querySelector(".score-max"))),
+        }
+      : {
+          value: number(clean(header?.querySelector(".total-value"))),
+          max: number(clean(header?.querySelector(".total-max"))),
+        };
+    const notices = [...root.querySelectorAll(".notice-card, .notice")]
+      // Whitespace is stripped entirely: legacy and the redesign wrap the same
+      // sentences in different block elements, which changes only inter-node
+      // spacing in textContent, never the wording.
+      .map((node) => clean(node).replace(/\s+/g, ""))
+      // The clinic memo moved to the supporting column; compared separately.
+      .filter((text) => !/클리닉/.test(text));
+    return { items, total, notices };
+  });
+}
+
+/** Clinic memo moved out of the score card into the supporting column. */
+async function clinicMemo(page: Page) {
+  return page.evaluate(() => {
+    const host =
+      document.querySelector(".clinic-section") ??
+      [...document.querySelectorAll("#score-content .notice-card")].find((card) =>
+        /클리닉/.test(card.textContent ?? ""),
+      );
+    return (host?.textContent ?? "")
+      .replace(/클리닉 안내/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  });
+}
+
 for (const width of [390, 1440]) {
   test.describe(`${width}px offline legacy parity`, () => {
     test.use({ viewport: { width, height: 1000 } });
@@ -86,10 +154,14 @@ for (const width of [390, 1440]) {
         const selector = value.startsWith("w")
           ? "#score-content"
           : "#mock-score-section";
-        expect(await normalizedText(page, selector)).toBe(
-          await normalizedText(legacy, selector),
+        expect(await scoreData(page, selector), `${value} score data`).toEqual(
+          await scoreData(legacy, selector),
         );
         if (value.startsWith("w")) {
+          expect(
+            (await clinicMemo(page)).replace(/\s+/g, ""),
+            `${value} clinic memo`,
+          ).toBe((await clinicMemo(legacy)).replace(/\s+/g, ""));
           expect(await normalizedText(page, "#summary-grid")).toBe(
             await normalizedText(legacy, "#summary-grid"),
           );
@@ -110,24 +182,32 @@ for (const width of [390, 1440]) {
         path: testInfo.outputPath(`legacy-${width}.png`),
         fullPage: true,
       });
-      for (const selector of [
-        ".student-info",
-        "#period-select",
-        "#score-content .card",
-        "#summary-grid",
-        "#chart-card",
-      ]) {
+      // The redesign explicitly supersedes legacy geometry; these bounds only
+      // catch collapsed or off-screen regions. `.student-info` is now an inline
+      // header label rather than a legacy block, so it carries its own minimum.
+      const regions: [string, { minWidth: number; minHeight: number }][] = [
+        [".student-info", { minWidth: 60, minHeight: 14 }],
+        ["#period-select", { minWidth: 200, minHeight: 40 }],
+        ["#score-content .card", { minWidth: 200, minHeight: 40 }],
+        ["#summary-grid", { minWidth: 200, minHeight: 40 }],
+        ["#chart-card", { minWidth: 200, minHeight: 40 }],
+      ];
+      for (const [selector, min] of regions) {
         const currentBox = await page.locator(selector).boundingBox();
         const oldBox = await legacy.locator(selector).boundingBox();
-        expect(currentBox).not.toBeNull();
-        expect(oldBox).not.toBeNull();
-        // Student redesign explicitly supersedes legacy geometry, not data parity.
+        expect(currentBox, `${selector} present`).not.toBeNull();
+        expect(oldBox, `${selector} present in legacy`).not.toBeNull();
         expect(currentBox!.width, `${selector} usable width`).toBeGreaterThan(
-          200,
+          min.minWidth,
         );
-        expect(currentBox!.x).toBeGreaterThanOrEqual(0);
-        expect(currentBox!.x + currentBox!.width).toBeLessThanOrEqual(width);
-        expect(currentBox!.height).toBeGreaterThan(40);
+        expect(currentBox!.x, `${selector} left edge`).toBeGreaterThanOrEqual(0);
+        expect(
+          currentBox!.x + currentBox!.width,
+          `${selector} right edge`,
+        ).toBeLessThanOrEqual(width);
+        expect(currentBox!.height, `${selector} usable height`).toBeGreaterThan(
+          min.minHeight,
+        );
       }
       expect(
         await page.evaluate(

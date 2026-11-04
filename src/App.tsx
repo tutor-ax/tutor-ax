@@ -112,7 +112,7 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
           height="40"
         />
         <div className="notebook-brand">
-          영어과 <span>학습 노트</span>
+          영어과
         </div>
         <nav
           className={`tab-nav${data ? " show" : ""}`}
@@ -141,6 +141,18 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
             지문 공부
           </button>
         </nav>
+        {data && (
+          <div className="student-info">
+            <span className="student-name" id="result-name">
+              {data.student.name}
+            </span>
+            {data.student.classes?.name && (
+              <span className="student-class" id="result-class">
+                {data.student.classes.name}
+              </span>
+            )}
+          </div>
+        )}
       </header>
       <main
         id="student-main"
@@ -157,7 +169,7 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
                 다음 공부를 이어가요.
               </p>
               <p>
-                결과는 차분하게, 공부는 한 걸음씩.
+                시험 결과와 학습 기록을 확인하세요.
                 <br />
                 성적 기록부터 단어와 지문 복습까지 한곳에 모았어요.
               </p>
