@@ -53,7 +53,7 @@
 .student-shell .login-guidance { margin-bottom: 24px; }
 .student-shell .form-group { margin-bottom: 18px; }
 .student-shell .form-group label { color: var(--navy); margin-bottom: 8px; }
-.student-shell .form-group input, .student-shell .period-select { background: #fff; border: 1px solid var(--border); border-radius: 5px; min-height: 44px; }
+.student-shell .form-group input, .student-shell .period-select { background-color: #fff; border: 1px solid var(--border); border-radius: 5px; min-height: 44px; }
 .student-shell input::placeholder { color: var(--gray); }
 .student-shell .login-entry [data-testid="demo-login"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 .student-shell .login-entry form .btn { background: var(--light-gray); color: var(--navy); }

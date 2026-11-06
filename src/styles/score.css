@@ -200,6 +200,7 @@
   color: var(--gray);
 }
 .period-select option {
+  padding: 8px 14px;
   font-size: 14px;
   color: var(--navy);
 }

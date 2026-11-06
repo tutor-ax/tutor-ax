@@ -157,9 +157,45 @@
   background: var(--admin-soft);
   color: var(--admin-muted);
 }
+/* Textareas read as a large input field: same frame, roomier body. */
 .admin-app textarea {
+  display: block;
   width: 100%;
+  min-height: 120px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  line-height: 1.6;
   resize: vertical;
+}
+.admin-app td textarea {
+  min-height: 88px;
+}
+.admin-app label:has(> textarea) {
+  display: flex;
+  width: 100%;
+  max-width: 640px;
+  margin-right: 0;
+}
+.admin-app textarea:hover,
+.admin-app select:hover {
+  border-color: var(--admin-muted);
+}
+.admin-app textarea:focus,
+.admin-app select:focus {
+  border-color: var(--admin-accent);
+}
+.admin-app select {
+  min-width: 160px;
+  padding: 10px 44px 10px 14px;
+  appearance: none;
+  /* Drawn chevron so every browser shows the same arrow with room around it. */
+  background: white
+    url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%2361616b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 16px center / 12px 8px;
+  cursor: pointer;
+}
+.admin-app select option {
+  padding: 8px 14px;
 }
 .admin-app
   :is(input, select, textarea, button, summary, [tabindex]):focus-visible {
