@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import App from "../src/App";
-import { createDemoGateway } from "../src/gateway";
+import { signedIn, signedOut } from "./fixtures";
 vi.mock("chart.js/auto", () => ({
   default: class {
     destroy() {}
@@ -12,13 +12,15 @@ afterEach(() => {
   localStorage.clear();
   history.replaceState({}, "", "/");
 });
-it("provides an accessible notebook shell with a main-content skip link", async () => {
-  render(<App gateway={createDemoGateway(localStorage)} />);
+it("offers a main-content skip link before signing in", () => {
+  render(<App gateway={signedOut()} />);
   expect(
     screen.getByRole("link", { name: "본문으로 건너뛰기" }),
   ).toHaveAttribute("href", "#student-main");
   expect(screen.getByRole("heading", { name: "나의 영어 노트" })).toBeVisible();
-  fireEvent.click(await screen.findByTestId("demo-login"));
+});
+it("marks the active tab and keeps the record table after signing in", async () => {
+  render(<App gateway={signedIn()} />);
   await screen.findByText("데모 학생");
   expect(screen.getByRole("button", { name: "점수 확인" })).toHaveAttribute(
     "aria-current",
@@ -37,7 +39,7 @@ it.each(["/admin", "/admin/", "/admin.html", "/#/admin", "/#/admin/"])(
   async (path) => {
     history.replaceState({}, "", path);
     const { container } = render(
-      <App gateway={createDemoGateway(localStorage)} />,
+      <App gateway={signedIn()} />,
     );
     expect(await screen.findByTestId("admin-workspace")).toBeVisible();
     expect(container.querySelector(".site-header")).toBeNull();

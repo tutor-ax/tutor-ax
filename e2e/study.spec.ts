@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { stubSignedIn } from "./session";
 const pages = process.env.PAGES_BUILD === "true";
 const entry = pages ? "/tutor-ax/" : "/";
 const route = (path: string) => (pages ? entry + "#" + path : path);
@@ -58,10 +59,18 @@ for (const width of [390, 1440])
     await page.setViewportSize({ width, height: 900 });
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
+    // Scores come from the session endpoint, so that call is expected. Study
+    // screens must still be local-only: anything OTHER than parent-login here
+    // would mean vocabulary or passages started calling a server.
     const api: string[] = [];
     page.on("request", (r) => {
-      if (["fetch", "xhr"].includes(r.resourceType())) api.push(r.url());
+      if (
+        ["fetch", "xhr"].includes(r.resourceType()) &&
+        !new URL(r.url()).pathname.endsWith("/api/parent-login")
+      )
+        api.push(r.url());
     });
+    await stubSignedIn(page);
     await page.goto(entry);
     const logo = page.getByRole("img", { name: "학원 로고" });
     await expect(logo).toBeVisible();
@@ -70,7 +79,6 @@ for (const width of [390, 1440])
         (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
       ),
     ).toBe(true);
-    await page.getByTestId("demo-login").click();
     await page.getByRole("button", { name: "단어 공부", exact: true }).click();
     await page.getByRole("button", { name: /데모 기본 어휘/ }).click();
     await page.getByRole("button", { name: /DAY 01/ }).click();

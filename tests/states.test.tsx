@@ -2,7 +2,13 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "../src/App";
 import fixture from "../src/data/demo-score.json";
-import type { LoginData, ScoreGateway } from "../src/gateway";
+import {
+  GatewayUnavailable,
+  InvalidCredentials,
+  type LoginData,
+  type ScoreGateway,
+} from "../src/gateway";
+import { signedIn, signedOut } from "./fixtures";
 
 vi.mock("chart.js/auto", () => ({
   default: class {
@@ -11,13 +17,7 @@ vi.mock("chart.js/auto", () => ({
 }));
 afterEach(cleanup);
 beforeEach(() => history.replaceState({}, "", "/"));
-function gateway(data: LoginData): ScoreGateway {
-  return {
-    resume: async () => data,
-    openDemo: async () => data,
-    logout: async () => {},
-  };
-}
+const gateway = (data: LoginData): ScoreGateway => signedIn(data);
 it("handles no periods without inventing scores or a chart", async () => {
   const empty: LoginData = {
     student: { id: 1, name: "빈 기록 데모" },
@@ -57,54 +57,89 @@ it("escapes student, item and clinic text instead of interpreting HTML", async (
     ),
   ).toBeNull();
 });
-it("recovers from a session error and a demo load error without fetching", async () => {
+it("keeps the user on the login screen when the session lookup fails", async () => {
   const failing: ScoreGateway = {
     resume: async () => {
-      throw Error("unavailable");
+      throw new GatewayUnavailable();
     },
-    openDemo: async () => {
-      throw Error("unavailable");
+    login: async () => {
+      throw new GatewayUnavailable();
     },
     logout: async () => {},
   };
   render(<App gateway={failing} />);
   await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("세션"));
-  fireEvent.click(await screen.findByTestId("demo-login"));
-  expect(
-    await screen.findByText(
-      "데모 데이터를 불러오지 못했습니다. 다시 시도해주세요.",
-    ),
-  ).toBeInTheDocument();
+  // A failed lookup must not strand the user: the form stays usable.
+  expect(screen.getByRole("button", { name: "점수 확인하기" })).toBeEnabled();
 });
-it("never treats typed names and PINs as production authentication", async () => {
-  const openDemo = vi.fn(async () => structuredClone(fixture) as LoginData);
+it("reports a rejected PIN without keeping it in the form", async () => {
+  const login = vi.fn(async () => {
+    throw new InvalidCredentials();
+  });
   const api: ScoreGateway = {
     resume: async () => null,
-    openDemo,
+    login,
     logout: async () => {},
   };
   render(<App gateway={api} />);
   const button = await screen.findByRole("button", { name: "점수 확인하기" });
-  // Wait for initial session lookup before submitting the preserved form.
-  await screen.findByTestId("demo-login");
   fireEvent.submit(button.closest("form")!);
   expect(screen.getByRole("alert")).toHaveTextContent(
     "이름과 PIN을 모두 입력해주세요.",
   );
+  expect(login).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText("학생 이름"), {
-    target: { value: "테스트 입력" },
+    target: { value: "데모 학생" },
   });
   fireEvent.change(screen.getByLabelText("학부모 연락처 뒷 4자리"), {
     target: { value: "0000" },
   });
   fireEvent.submit(button.closest("form")!);
-  expect(screen.getByRole("alert")).toHaveTextContent(
-    "운영 로그인이 연결되지 않은 개발본",
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "이름 또는 PIN이 올바르지 않습니다.",
+    ),
   );
+  expect(login).toHaveBeenCalledWith("데모 학생", "0000");
+  // A wrong PIN must never linger in the field for the next person.
   expect(screen.getByLabelText("학부모 연락처 뒷 4자리")).toHaveValue("");
-  expect(openDemo).not.toHaveBeenCalled();
 });
-it("direct passage URL keeps its route after demo session restore", async () => {
+it("distinguishes an unreachable server from a wrong PIN", async () => {
+  const api: ScoreGateway = {
+    resume: async () => null,
+    login: async () => {
+      throw new GatewayUnavailable();
+    },
+    logout: async () => {},
+  };
+  render(<App gateway={api} />);
+  const button = await screen.findByRole("button", { name: "점수 확인하기" });
+  fireEvent.change(screen.getByLabelText("학생 이름"), {
+    target: { value: "데모 학생" },
+  });
+  fireEvent.change(screen.getByLabelText("학부모 연락처 뒷 4자리"), {
+    target: { value: "0000" },
+  });
+  fireEvent.submit(button.closest("form")!);
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "로그인하지 못했습니다",
+    ),
+  );
+});
+it("opens the score screen after a successful login", async () => {
+  render(<App gateway={signedOut()} />);
+  const button = await screen.findByRole("button", { name: "점수 확인하기" });
+  fireEvent.change(screen.getByLabelText("학생 이름"), {
+    target: { value: "데모 학생" },
+  });
+  fireEvent.change(screen.getByLabelText("학부모 연락처 뒷 4자리"), {
+    target: { value: "1234" },
+  });
+  fireEvent.submit(button.closest("form")!);
+  expect(await screen.findByText("데모 학생")).toBeInTheDocument();
+});
+it("direct passage URL keeps its route after session restore", async () => {
   history.replaceState({}, "", "/vocab/?go=passage");
   render(<App gateway={gateway(structuredClone(fixture) as LoginData)} />);
   expect(
