@@ -2,26 +2,29 @@ package com.tutorax.backend;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.time.Clock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/**
- * /api/admin/** 는 관리자 비밀번호(X-Admin-Password)를 확인한다. score-system admin-api와 같은 방식.
- * shortcut: 요청마다 비밀번호를 보내는 방식, 쓰기 경로(운영 전환 4단계) 전에 세션 토큰으로 바꿀 것.
- */
+/** /api/admin/** 는 admin_session 쿠키를 확인한다. 로그인(/api/admin/session)만 예외. 설정이 비면 전부 503(fail closed). */
 @Component
 public class AdminAuthFilter extends OncePerRequestFilter {
-    static final String HEADER = "X-Admin-Password";
-    private final byte[] expected;
+    private final AdminSession session;
+    private final boolean passwordSet;
 
-    public AdminAuthFilter(@Value("${tutorax.admin-password:}") String password) {
-        this.expected = password.getBytes(StandardCharsets.UTF_8);
+    public AdminAuthFilter(@Value("${tutorax.admin-password:}") String password,
+                           @Value("${tutorax.session-secret:}") String secret) {
+        this(password, new AdminSession(secret, Clock.systemUTC()));
+    }
+
+    AdminAuthFilter(String password, AdminSession session) {
+        this.passwordSet = !password.isEmpty();
+        this.session = session;
     }
 
     @Override
@@ -32,19 +35,24 @@ public class AdminAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
-        if (expected.length == 0) {
-            reject(res, 503, "admin_password_not_set");
+        if (!passwordSet || !session.configured()) {
+            reject(res, 503, "admin_auth_not_configured");
             return;
         }
-        String given = req.getHeader(HEADER);
-        if (given == null || !MessageDigest.isEqual(expected, given.getBytes(StandardCharsets.UTF_8))) {
-            reject(res, 401, "unauthorized");
+        if (req.getRequestURI().equals("/api/admin/session") || session.valid(cookie(req))) {
+            chain.doFilter(req, res);
             return;
         }
-        chain.doFilter(req, res);
+        reject(res, 401, "unauthorized");
     }
 
-    private static void reject(HttpServletResponse res, int status, String error) throws IOException {
+    private static String cookie(HttpServletRequest req) {
+        if (req.getCookies() == null) return null;
+        for (Cookie c : req.getCookies()) if (AdminSession.COOKIE.equals(c.getName())) return c.getValue();
+        return null;
+    }
+
+    static void reject(HttpServletResponse res, int status, String error) throws IOException {
         res.setStatus(status);
         res.setContentType("application/json");
         res.getWriter().write("{\"error\":\"" + error + "\"}");

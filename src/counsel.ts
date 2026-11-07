@@ -1,5 +1,5 @@
 // 대면 상담 참고 카드(학원 내부용). DB 모양(scores 행)을 그대로 받으므로 실 API로 바꿔도 이 계산은 그대로 쓴다.
-// 숫자는 전부 여기서 계산하고, AI에는 "물어볼 질문"만 맡긴다(counselPrompt).
+// 숫자는 전부 여기서 계산하고, AI에는 "물어볼 질문"만 맡긴다(프롬프트는 backend QuestionsController).
 import {
   isBelowCut,
   itemVal,
@@ -169,24 +169,4 @@ export function counselCard(
         .join("\n")
     : " - 없음";
   return `[${head}]  최근 ${weekCount}주차 기준\n\n■ 흐름\n${flow}\n\n■ 클리닉 메모 (최근 3개)\n${memo}`;
-}
-
-/**
- * "상담 때 물어볼 질문" 프롬프트. 학생·반 이름과 메모 원문은 넣지 않는다(외부 모델로 개인정보 미전송).
- * shortcut: 모델 호출은 백엔드(운영 전환 1단계 이후)가 한다. 브라우저에는 API 키를 두지 않는다.
- */
-export function counselPrompt(brief: CounselBrief, weekCount: number): string {
-  const lines = brief.lines.length
-    ? brief.lines.map((l) => `- ${l}`).join("\n")
-    : "(특이 기록 없음)";
-  return `한 학생의 최근 ${weekCount}주차 학원 기록 요약이다.
-
-${lines}
-
-학원 선생님이 이 학생과 대면 상담하기 전에 볼 참고 자료다. 상담 때 학생에게 물어볼 질문을 2~3개 써줘.
-- 각 질문 끝에 근거가 된 기록을 괄호로 짧게 붙일 것 (예: "(최근 2주 과제 완료율 하락)")
-- 원인을 단정하지 말고 학생에게 묻는 형태로만 쓸 것
-- 기록에 없는 숫자는 만들어내지 말 것
-- 특이한 기록이 없으면 근황과 수업 난이도를 묻는 질문을 쓸 것
-- 번호 목록만 출력 (머리말·꼬리말·설명 없이)`;
 }

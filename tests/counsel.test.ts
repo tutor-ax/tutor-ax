@@ -2,7 +2,6 @@ import { expect, it } from "vitest";
 import {
   counselBrief,
   counselCard,
-  counselPrompt,
   type CounselRow,
 } from "../src/counsel";
 
@@ -48,15 +47,15 @@ it("summarizes the signals a teacher needs before a face-to-face talk", () => {
   expect(b.memos).toEqual([{ week: "10.3", memo: "목 6시" }]);
 });
 
-it("keeps names and memo text out of the model prompt", () => {
+it("keeps names and memo text out of the lines sent to the model", () => {
   const b = counselBrief(weeks, rows, 7, null, NOW);
   const card = counselCard("가상 학생 A · 데모 A", 4, b);
   expect(card).toContain("가상 학생 A");
   expect(card).toContain("10.3: 목 6시");
-  const prompt = counselPrompt(b, 4);
-  expect(prompt).not.toContain("가상 학생 A");
-  expect(prompt).not.toContain("목 6시");
-  expect(prompt).toContain("최근 3주 연속 하락");
+  const sent = b.lines.join("\n");
+  expect(sent).not.toContain("가상 학생 A");
+  expect(sent).not.toContain("목 6시");
+  expect(sent).toContain("최근 3주 연속 하락");
 });
 
 it("reports missing weeks instead of inventing numbers", () => {

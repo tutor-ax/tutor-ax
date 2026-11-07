@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  AdminLocked,
   AdminUnauthorized,
   createAdminApi,
-  type AdminApi,
   type AdminClass,
   type AdminStudent,
 } from "../adminApi";
@@ -11,16 +11,29 @@ import { sortByDateDesc } from "../domain";
 
 // 실제 DB(읽기 전용)로 상담 카드를 만든다. 데모 데이터와 섞지 않도록 별도 구역으로 둔다.
 export default function CounselLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
+  const [api] = useState(() => createAdminApi(fetchImpl));
+  const [signedIn, setSignedIn] = useState(false);
   const [password, setPassword] = useState("");
-  const [api, setApi] = useState<AdminApi | null>(null);
   const [classes, setClasses] = useState<AdminClass[]>([]);
   const [classId, setClassId] = useState("");
   const [students, setStudents] = useState<AdminStudent[]>([]);
   const [studentId, setStudentId] = useState("");
   const [weekCount, setWeekCount] = useState(6);
   const [card, setCard] = useState("");
+  const [questions, setQuestions] = useState("");
+  const [aiNote, setAiNote] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const signOutLocally = () => {
+    setSignedIn(false);
+    setClasses([]);
+    setClassId("");
+    setStudents([]);
+    setStudentId("");
+    setCard("");
+    setQuestions("");
+  };
 
   const run = async (task: () => Promise<void>) => {
     setBusy(true);
@@ -29,19 +42,39 @@ export default function CounselLive({ fetchImpl }: { fetchImpl?: typeof fetch })
       await task();
     } catch (e) {
       if (e instanceof AdminUnauthorized) {
-        setApi(null);
-        setError("관리자 비밀번호가 맞지 않습니다.");
+        signOutLocally();
+        setError("관리자 비밀번호가 맞지 않거나 로그인이 만료됐습니다.");
+      } else if (e instanceof AdminLocked) {
+        setError("로그인 실패가 많아 10분간 잠겼습니다.");
       } else setError("서버에서 기록을 불러오지 못했습니다. 백엔드가 켜져 있는지 확인하세요.");
     } finally {
       setBusy(false);
     }
   };
 
-  const connect = () =>
+  // 이미 로그인된 세션(쿠키)이 있으면 비밀번호 없이 이어간다. 없으면(401) 조용히 로그인 화면.
+  useEffect(() => {
+    api
+      .classes()
+      .then((list) => {
+        setClasses(list);
+        setSignedIn(true);
+      })
+      .catch(() => {});
+  }, [api]);
+
+  const login = () =>
     run(async () => {
-      const next = createAdminApi(password, fetchImpl);
-      setClasses(await next.classes());
-      setApi(next);
+      await api.login(password);
+      setPassword("");
+      setClasses(await api.classes());
+      setSignedIn(true);
+    });
+
+  const logout = () =>
+    run(async () => {
+      await api.logout();
+      signOutLocally();
     });
 
   const pickClass = (id: string) => {
@@ -49,17 +82,20 @@ export default function CounselLive({ fetchImpl }: { fetchImpl?: typeof fetch })
     setStudentId("");
     setStudents([]);
     setCard("");
-    if (api && id) void run(async () => setStudents(await api.students(Number(id))));
+    setQuestions("");
+    if (id) void run(async () => setStudents(await api.students(Number(id))));
   };
 
   const build = () =>
     run(async () => {
       const student = students.find((s) => String(s.id) === studentId);
-      if (!api || !student) return;
+      if (!student) return;
+      setCard("");
+      setQuestions("");
+      setAiNote("");
       const all = await api.weeks(Number(classId));
       const picked = sortByDateDesc(all, (w) => w.test_date || w.label || "").slice(0, weekCount);
       if (!picked.length) {
-        setCard("");
         setError("이 반에 등록된 주차가 없습니다.");
         return;
       }
@@ -70,17 +106,26 @@ export default function CounselLive({ fetchImpl }: { fetchImpl?: typeof fetch })
         .filter(Boolean)
         .join(" · ");
       setCard(counselCard(head, picked.length, brief));
+      // 질문은 덤이다 — 실패해도 카드는 그대로 쓴다.
+      setAiNote("상담 질문을 만드는 중...");
+      try {
+        setQuestions(await api.questions(brief.lines, picked.length));
+        setAiNote("");
+      } catch (e) {
+        if (e instanceof AdminUnauthorized) throw e;
+        setAiNote("AI 질문을 만들지 못했습니다. 카드는 그대로 쓰실 수 있습니다.");
+      }
     });
 
   return (
     <section aria-label="실제 DB 상담 카드">
       <h3>실제 DB (읽기 전용)</h3>
       <p>실제 학생 기록입니다. 화면 밖으로 옮기지 마세요.</p>
-      {!api ? (
+      {!signedIn ? (
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            void connect();
+            void login();
           }}
         >
           <label>
@@ -93,6 +138,9 @@ export default function CounselLive({ fetchImpl }: { fetchImpl?: typeof fetch })
         </form>
       ) : (
         <>
+          <button type="button" disabled={busy} onClick={() => void logout()}>
+            로그아웃
+          </button>
           <label>
             실제 반 선택
             <select value={classId} onChange={(e) => pickClass(e.target.value)}>
@@ -132,6 +180,13 @@ export default function CounselLive({ fetchImpl }: { fetchImpl?: typeof fetch })
       )}
       {error && <p role="alert">{error}</p>}
       {card && <textarea aria-label="실제 상담 카드" readOnly rows={14} value={card} />}
+      {aiNote && <p role="status">{aiNote}</p>}
+      {questions && (
+        <label>
+          상담 때 물어볼 것 (AI · 단정하지 않는 질문)
+          <textarea aria-label="상담 질문" rows={5} defaultValue={questions} key={questions} />
+        </label>
+      )}
     </section>
   );
 }
