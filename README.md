@@ -20,17 +20,19 @@
 | 지문 공부 | 그룹/지문 선택·문장별 해석·전체 해석·단어·이전/다음 |
 | OCR·RAG·클리닉 에이전트 | 아직 구현하지 않음 |
 
-## 공개 데모
+## 배포
 
-https://yooncandooit.github.io/tutor-ax/
+https://tutor-ax.vercel.app (Vercel, `main`에서 배포)
 
-관리자: https://yooncandooit.github.io/tutor-ax/admin/ (학생 로그인 없이 합성 데이터만 표시)
+`vercel.json`이 API를 나눠 보냅니다.
 
-요청받은 학원 로고는 공통 헤더에 포함했습니다. 관리자 변경은 브라우저별 샘플에만 저장되며 학생 성적 확인의 고정 fixture와 연동되지 않습니다.
+| 경로 | 대상 |
+|---|---|
+| `/api/parent-login` | 기존 Supabase `parent-login` 함수 |
+| `/api/admin/*` | [tutor-server](https://github.com/tutor-ax/tutor-server)의 AWS Lambda 함수 URL |
+| 그 외 | `index.html` (화면 경로 새로고침) |
 
-main에 push하면 `.github/workflows/pages.yml`이 합성 데이터 전용 앱을 빌드하고 `dist`만 GitHub Pages에 배포합니다. 저장소는 Private이지만 이 데모와 배포된 JavaScript는 공개입니다. 고객 학원명은 데모 표기로 변경했습니다. 실제 고객 데이터·서버 자격증명은 포함하지 않습니다.
-
-Pages 빌드는 `PAGES_BUILD=true npm run build`를 사용합니다. `/tutor-ax/` asset base와 hash 경로를 사용해 탭 이동 후 새로고침도 유지합니다. 원본 비교용 HTML과 문서는 배포하지 않습니다.
+예전 GitHub Pages 공개 데모는 운영 전환 계획(공개 데모 폐기)에 따라 워크플로를 지웠습니다. `PAGES_BUILD=true` 빌드 모드와 `npm run test:pages`는 로컬 검증용으로 남아 있습니다.
 
 ## 실행
 
@@ -228,26 +230,7 @@ SOLAPI 웹/API 직접 연동 표준 단가. 국내 VAT 10%를 가정한 포함 �
 
 이번 확장 범위와 미이전 항목은 [2단계 기록](docs/PHASE2.md)에 명시했습니다. 원본 출처·차이·제약은 [마이그레이션 기록](docs/MIGRATION.md)을 참고하세요. 원본 코드의 공개·재배포 권한을 새로 부여하는 라이선스를 선언하지 않습니다.
 
-## 관리자 백엔드 (backend/, Spring Boot · 읽기 전용)
+## 관리자 백엔드
 
-상담 준비 탭의 "실제 DB" 구역이 쓰는 API. 읽기 전용 DB 계정으로만 붙는다.
-
-`.env.local`(gitignore됨)에 필요한 값:
-
-| 변수 | 용도 | 없으면 |
-|---|---|---|
-| `DB_URL` `DB_USER` `DB_PASSWORD` | 읽기 전용 DB 계정 | 기동 실패 |
-| `ADMIN_PASSWORD` | 관리자 로그인 비밀번호 | `/api/admin/**` 전부 503 |
-| `ADMIN_SESSION_SECRET` | 로그인 쿠키 서명, 32자 이상 (`openssl rand -hex 32`) | `/api/admin/**` 전부 503 |
-| `GEMINI_API_KEY` | 상담 질문 생성 | 질문만 503, 카드는 동작 |
-
-```
-cd backend
-set -a; . ../.env.local; set +a
-./mvnw spring-boot:run                  # 127.0.0.1:8080
-```
-
-다른 터미널에서 `npm run dev` → 관리자 → 상담 준비. 개발 서버가 `/api/admin`을 8080으로 넘긴다.
-로그인은 HttpOnly 쿠키(12시간), 같은 IP에서 5회 실패하면 10분 잠금.
-
-배포: AWS Lambda(SnapStart) — `infra/README.md` 참고.
+상담 준비 탭의 "실제 DB" 구역이 쓰는 API와 AWS 인프라는 [tutor-server](https://github.com/tutor-ax/tutor-server)에 있습니다.
+로컬에서는 tutor-server를 8080으로 띄우고 `npm run dev`를 실행하세요. 개발 서버가 `/api/admin`을 8080으로 넘깁니다.
