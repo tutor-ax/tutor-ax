@@ -1,8 +1,8 @@
 # infra — AWS CDK (서울 리전)
 
 ```
-Vercel(tutor-ax) ──/api/admin──▶ ALB ─┬─ Fargate 작업 (AZ-a) ─┐
-                                      └─ Fargate 작업 (AZ-c) ─┴─▶ Supabase(서울)
+Vercel(tutor-ax) ─HTTPS─▶ CloudFront(*.cloudfront.net) ─VPC 오리진─▶ 내부 ALB ─┬─ Fargate (AZ-a) ─┐
+                                                                            └─ Fargate (AZ-c) ─┴─▶ Supabase(서울)
 GitHub Actions ──OIDC──▶ cdk deploy (이미지는 CDK가 backend/Dockerfile로 빌드)
 Secrets Manager ──▶ 작업 환경변수(DB·관리자·세션·Gemini)
 CloudWatch 경보(정상 작업 < 2, 5xx) ──▶ SNS ──▶ 이메일
@@ -11,7 +11,9 @@ CloudWatch 경보(정상 작업 < 2, 5xx) ──▶ SNS ──▶ 이메일
 | 결정 | 이유 |
 |---|---|
 | Fargate 2개, 가용 영역 2곳 | 콜드스타트 없음, AZ 하나 장애에도 응답 |
-| NAT 게이트웨이 없음 | 월 수만 원 절약. 작업은 공인 IP를 받되 보안 그룹은 ALB 요청만 허용 |
+| CloudFront + 내부 ALB | 도메인 없이 무료 HTTPS(*.cloudfront.net). ALB는 인터넷에 노출되지 않고 CloudFront만 AWS 내부망으로 접근 |
+| CloudFront 캐시 끔 | 관리자 API라 응답이 섞이면 안 됨. 쿠키·헤더·쿼리는 그대로 전달 |
+| NAT 게이트웨이 없음 | 월 수만 원 절약. 작업은 공인 IP로 밖에 나가되 보안 그룹은 ALB 요청만 허용 |
 | ARM64(Graviton) | 같은 사양에서 x86보다 저렴 |
 | 배포 회로 차단기 + 자동 롤백 | 새 버전이 `/api/health`를 못 넘기면 이전 버전 유지 |
 | OIDC 배포 역할 | GitHub에 AWS 키를 저장하지 않음, `main`에서만 배포 |
@@ -20,7 +22,7 @@ CloudWatch 경보(정상 작업 < 2, 5xx) ──▶ SNS ──▶ 이메일
 
 ## 처음 배포
 
-필요: 관리자급 권한이 있는 본인 AWS 계정 자격 증명, Docker 실행 중, Node 22.
+필요: `aws sso login --profile tutor-ax`, Docker 실행 중, Node 22. 아래 명령은 `AWS_PROFILE=tutor-ax`가 설정된 셸에서.
 
 ```
 cd infra && npm ci
@@ -51,19 +53,15 @@ npx cdk deploy -c alarmEmail=<메일>
 
 SNS 확인 메일의 링크를 눌러야 경보가 온다.
 
-## HTTPS (운영 전 필수)
+## 도메인을 붙이고 싶으면
 
-도메인 없이 배포하면 HTTP만 열린다(관리자 비밀번호가 평문). Route 53 호스팅 영역이 있으면:
-
-```
-npx cdk deploy -c domainName=api.<도메인> -c hostedZoneName=<도메인> -c alarmEmail=<메일>
-```
+지금은 `*.cloudfront.net` 주소로 충분하다. 나중에 도메인을 사면 ACM 인증서(us-east-1)를 만들어 CloudFront 배포에 대체 도메인으로 붙인다.
 
 ## GitHub Actions 자동 배포
 
 저장소 Settings → Variables에:
 - `AWS_DEPLOY_ROLE_ARN`: 출력의 `DeployRoleArn`
-- `CDK_CONTEXT`: 예 `-c domainName=api.example.com -c hostedZoneName=example.com -c alarmEmail=me@example.com`
+- `CDK_CONTEXT`: 예 `-c alarmEmail=me@example.com`
 
 계정에 GitHub OIDC 공급자가 이미 있으면 `-c githubOidcProviderArn=<ARN>`을 함께 넘긴다.
 

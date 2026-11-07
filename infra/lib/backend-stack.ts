@@ -2,7 +2,8 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as cdk from "aws-cdk-lib";
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
-import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as cfOrigins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as cwActions from "aws-cdk-lib/aws-cloudwatch-actions";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
@@ -11,8 +12,6 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
-import * as route53 from "aws-cdk-lib/aws-route53";
-import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as subs from "aws-cdk-lib/aws-sns-subscriptions";
@@ -21,10 +20,6 @@ import type { Construct } from "constructs";
 export interface BackendStackProps extends cdk.StackProps {
   /** GitHub Actions가 배포할 저장소 (owner/name) */
   githubRepo: string;
-  /** 예: api.example.com. 주면 ACM 인증서 + HTTPS, 없으면 HTTP만(시험용 — 운영 금지). */
-  domainName?: string;
-  /** domainName이 속한 Route 53 호스팅 영역. 예: example.com */
-  hostedZoneName?: string;
   /** 경보를 받을 이메일. 배포 후 받은 확인 메일을 눌러야 구독된다. */
   alarmEmail?: string;
   /** 계정에 GitHub OIDC 공급자가 이미 있으면 그 ARN(같은 공급자는 계정당 하나만 만들 수 있다). */
@@ -40,12 +35,16 @@ export class BackendStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: BackendStackProps) {
     super(scope, id, props);
 
-    // 가용 영역 2곳. NAT 게이트웨이는 비싸서(개당 월 수만 원) 두지 않고, 작업에 공인 IP를 주되
-    // 보안 그룹으로 ALB에서 오는 요청만 받는다. 바깥으로 나가는 요청(Supabase, Gemini)은 공인 IP로 나간다.
+    // 가용 영역 2곳. NAT 게이트웨이는 비싸서(개당 월 수만 원) 두지 않는다.
+    // - public: Fargate 작업. 공인 IP로 바깥(Supabase, Gemini)에 나가되, 보안 그룹은 ALB 요청만 받는다.
+    // - isolated: 내부 ALB. 인터넷 경로가 아예 없고 CloudFront VPC 오리진만 들어온다.
     const vpc = new ec2.Vpc(this, "Vpc", {
       maxAzs: 2,
       natGateways: 0,
-      subnetConfiguration: [{ name: "public", subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 }],
+      subnetConfiguration: [
+        { name: "public", subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 },
+        { name: "isolated", subnetType: ec2.SubnetType.PRIVATE_ISOLATED, cidrMask: 24 },
+      ],
     });
 
     // 비밀값은 여기 한 곳에. 세션 서명값만 자동 생성하고 나머지는 배포 후 CLI로 채운다(코드·템플릿에 값 없음).
@@ -95,34 +94,39 @@ export class BackendStack extends cdk.Stack {
       healthCheckGracePeriod: Duration.seconds(90), // JVM 기동 시간
     });
 
-    const alb = new elbv2.ApplicationLoadBalancer(this, "Alb", { vpc, internetFacing: true });
-    let listener: elbv2.ApplicationListener;
-    let publicUrl: string;
-    if (props.domainName && props.hostedZoneName) {
-      const zone = route53.HostedZone.fromLookup(this, "Zone", { domainName: props.hostedZoneName });
-      const certificate = new acm.Certificate(this, "Cert", {
-        domainName: props.domainName,
-        validation: acm.CertificateValidation.fromDns(zone),
-      });
-      listener = alb.addListener("Https", { port: 443, certificates: [certificate], sslPolicy: elbv2.SslPolicy.RECOMMENDED_TLS });
-      alb.addRedirect({ sourcePort: 80, targetPort: 443 });
-      new route53.ARecord(this, "Alias", {
-        zone,
-        recordName: props.domainName,
-        target: route53.RecordTarget.fromAlias(new route53Targets.LoadBalancerTarget(alb)),
-      });
-      publicUrl = `https://${props.domainName}`;
-    } else {
-      // shortcut: 도메인 없이 HTTP로만 연다 — 비밀번호가 평문으로 오간다. 동작 확인용, 운영 전 domainName 필수.
-      listener = alb.addListener("Http", { port: 80 });
-      publicUrl = `http://${alb.loadBalancerDnsName}`;
-    }
+    // 내부 전용 ALB. 도메인 없이도 HTTPS를 주려고 앞에 CloudFront를 둔다(*.cloudfront.net 기본 인증서).
+    // CloudFront → ALB 구간은 VPC 오리진(AWS 내부망)이라 인터넷을 지나지 않는다.
+    const alb = new elbv2.ApplicationLoadBalancer(this, "Alb", {
+      vpc,
+      internetFacing: false,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+    });
+    // VPC 오리진 ENI는 ALB 서브넷 안에 생긴다. 내부 ALB라 바깥에서는 이 규칙으로도 닿을 수 없다.
+    alb.connections.allowFrom(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(80), "CloudFront VPC origin");
+    const listener = alb.addListener("Http", { port: 80, open: false });
     const targetGroup = listener.addTargets("Backend", {
       port: 8080,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targets: [service],
       healthCheck: { path: "/api/health", healthyHttpCodes: "200", interval: Duration.seconds(15), healthyThresholdCount: 2 },
       deregistrationDelay: Duration.seconds(30),
+    });
+
+    const distribution = new cloudfront.Distribution(this, "Cdn", {
+      comment: "tutor-ax backend (admin API)",
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_200, // 한국 포함, 가장 비싼 일부 지역 제외
+      defaultBehavior: {
+        origin: cfOrigins.VpcOrigin.withApplicationLoadBalancer(alb, {
+          httpPort: 80,
+          protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+          readTimeout: Duration.seconds(30), // AI 질문 생성(최대 25초)보다 길게
+        }),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        // 관리자 API라 캐시하면 다른 사람 응답이 섞인다 — 캐시 끔. 쿠키·헤더·쿼리는 그대로 넘긴다.
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+      },
     });
 
     // 경보 → SNS → 이메일. "정상 작업이 2개 미만"과 "백엔드 5xx"를 장애로 본다.
@@ -176,7 +180,10 @@ export class BackendStack extends cdk.Stack {
       }),
     );
 
-    new cdk.CfnOutput(this, "BackendUrl", { value: publicUrl, description: "Vercel rewrite 대상" });
+    new cdk.CfnOutput(this, "BackendUrl", {
+      value: `https://${distribution.distributionDomainName}`,
+      description: "Vercel rewrite 대상",
+    });
     new cdk.CfnOutput(this, "SecretName", { value: secret.secretName, description: "배포 후 값을 채울 비밀" });
     new cdk.CfnOutput(this, "DeployRoleArn", { value: deployRole.roleArn, description: "GitHub 변수 AWS_DEPLOY_ROLE_ARN" });
     new cdk.CfnOutput(this, "AlarmTopicArn", { value: alarms.topicArn });

@@ -25,7 +25,7 @@ it("runs two ARM tasks across two AZs with rollback and no NAT gateway", () => {
   t.hasResourceProperties("AWS::ECS::TaskDefinition", {
     RuntimePlatform: { CpuArchitecture: "ARM64", OperatingSystemFamily: "LINUX" },
   });
-  t.resourceCountIs("AWS::EC2::Subnet", 2);
+  t.resourceCountIs("AWS::EC2::Subnet", 4); // public 2 (작업) + isolated 2 (내부 ALB)
   t.resourceCountIs("AWS::EC2::NatGateway", 0);
   t.hasResourceProperties("AWS::ElasticLoadBalancingV2::TargetGroup", { HealthCheckPath: "/api/health" });
 });
@@ -55,6 +55,24 @@ it("alerts by email on lost tasks and 5xx, and lets only main of the repo deploy
       ]),
     }),
   });
+});
+
+it("serves HTTPS through CloudFront to an internal ALB with caching disabled", () => {
+  const t = synth();
+  t.hasResourceProperties("AWS::ElasticLoadBalancingV2::LoadBalancer", { Scheme: "internal" });
+  t.resourceCountIs("AWS::CloudFront::VpcOrigin", 1);
+  t.hasResourceProperties("AWS::CloudFront::Distribution", {
+    DistributionConfig: Match.objectLike({
+      DefaultCacheBehavior: Match.objectLike({
+        ViewerProtocolPolicy: "https-only",
+        CachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad", // Managed-CachingDisabled
+        AllowedMethods: Match.arrayWith(["POST", "DELETE"]),
+      }),
+    }),
+  });
+  // ALB 보안 그룹에 0.0.0.0/0 인바운드가 없어야 한다
+  const sgs = Object.values(t.findResources("AWS::EC2::SecurityGroup")) as any[];
+  for (const sg of sgs) for (const r of sg.Properties.SecurityGroupIngress ?? []) expect(r.CidrIp).not.toBe("0.0.0.0/0");
 });
 
 it("can start with zero tasks for the first deploy", () => {

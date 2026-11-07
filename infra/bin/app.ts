@@ -8,8 +8,6 @@ const ctx = (k: string) => app.node.tryGetContext(k) as string | undefined;
 new BackendStack(app, "TutorAxBackend", {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION ?? "ap-northeast-2" },
   githubRepo: ctx("githubRepo") ?? "yooncandooit/tutor-ax",
-  domainName: ctx("domainName"),
-  hostedZoneName: ctx("hostedZoneName"),
   alarmEmail: ctx("alarmEmail"),
   githubOidcProviderArn: ctx("githubOidcProviderArn"),
   desiredCount: ctx("desiredCount") === undefined ? undefined : Number(ctx("desiredCount")),
