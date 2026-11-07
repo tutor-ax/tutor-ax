@@ -7,6 +7,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -27,6 +28,7 @@ public class SessionController {
     // shortcut: 실패 횟수를 메모리에 둔다 — 파드가 여러 개면 파드마다 따로 센다. 다중 파드 배포 시 DB/Redis로.
     private final Map<String, long[]> failures = new ConcurrentHashMap<>(); // ip → [횟수, 잠금 해제 epoch초]
 
+    @Autowired
     public SessionController(@Value("${tutorax.admin-password:}") String password,
                              @Value("${tutorax.session-secret:}") String secret) {
         this(password, new AdminSession(secret, Clock.systemUTC()), Clock.systemUTC());

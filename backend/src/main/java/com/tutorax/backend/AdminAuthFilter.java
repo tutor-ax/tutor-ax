@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Clock;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -17,6 +18,7 @@ public class AdminAuthFilter extends OncePerRequestFilter {
     private final AdminSession session;
     private final boolean passwordSet;
 
+    @Autowired
     public AdminAuthFilter(@Value("${tutorax.admin-password:}") String password,
                            @Value("${tutorax.session-secret:}") String secret) {
         this(password, new AdminSession(secret, Clock.systemUTC()));
