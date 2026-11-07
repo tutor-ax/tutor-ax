@@ -10,5 +10,7 @@ new BackendStack(app, "TutorAxBackend", {
   githubRepo: ctx("githubRepo") ?? "tutor-ax/tutor-ax",
   alarmEmail: ctx("alarmEmail"),
   githubOidcProviderArn: ctx("githubOidcProviderArn"),
-  desiredCount: ctx("desiredCount") === undefined ? undefined : Number(ctx("desiredCount")),
+  lambdaCodeDir: "build/lambda", // npm run build:backend
+  secretOnly: ctx("secretOnly") === "true",
+  configRevision: ctx("configRevision"),
 });

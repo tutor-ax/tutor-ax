@@ -1,46 +1,62 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import * as cdk from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { expect, it } from "vitest";
-import { BackendStack } from "../lib/backend-stack.js";
+import { BackendStack, type BackendStackProps } from "../lib/backend-stack.js";
 
-const synth = (extra: Partial<ConstructorParameters<typeof BackendStack>[2]> = {}) =>
+const codeDir = mkdtempSync(join(tmpdir(), "lambda-"));
+writeFileSync(join(codeDir, "run.sh"), "#!/bin/sh\n");
+writeFileSync(join(codeDir, "app.jar"), "");
+
+const synth = (extra: Partial<BackendStackProps> = {}) =>
   Template.fromStack(
     new BackendStack(new cdk.App(), "T", {
       env: { account: "111111111111", region: "ap-northeast-2" },
       githubRepo: "owner/repo",
       alarmEmail: "ops@example.com",
+      lambdaCodeDir: codeDir,
       ...extra,
     }),
   );
 
-it("runs two ARM tasks across two AZs with rollback and no NAT gateway", () => {
+it("runs Spring Boot on ARM Lambda with SnapStart behind the web adapter", () => {
   const t = synth();
-  t.hasResourceProperties("AWS::ECS::Service", {
-    DesiredCount: 2,
-    DeploymentConfiguration: Match.objectLike({
-      MinimumHealthyPercent: 100,
-      DeploymentCircuitBreaker: { Enable: true, Rollback: true },
-    }),
+  t.hasResourceProperties("AWS::Lambda::Function", {
+    Runtime: "java21",
+    Architectures: ["arm64"],
+    Handler: "run.sh",
+    Timeout: 30,
+    SnapStart: { ApplyOn: "PublishedVersions" },
+    Layers: ["arn:aws:lambda:ap-northeast-2:753240598075:layer:LambdaAdapterLayerArm64:30"],
+    Environment: {
+      Variables: Match.objectLike({
+        AWS_LAMBDA_EXEC_WRAPPER: "/opt/bootstrap",
+        AWS_LWA_READINESS_CHECK_PATH: "/api/health",
+      }),
+    },
   });
-  t.hasResourceProperties("AWS::ECS::TaskDefinition", {
-    RuntimePlatform: { CpuArchitecture: "ARM64", OperatingSystemFamily: "LINUX" },
-  });
-  t.resourceCountIs("AWS::EC2::Subnet", 4); // public 2 (작업) + isolated 2 (내부 ALB)
-  t.resourceCountIs("AWS::EC2::NatGateway", 0);
-  t.hasResourceProperties("AWS::ElasticLoadBalancingV2::TargetGroup", { HealthCheckPath: "/api/health" });
+  // 상시 비용이 드는 리소스는 없어야 한다
+  for (const type of ["AWS::ElasticLoadBalancingV2::LoadBalancer", "AWS::ECS::Service", "AWS::EC2::NatGateway"])
+    t.resourceCountIs(type, 0);
+  t.hasResourceProperties("AWS::Lambda::Url", { AuthType: "NONE" });
+  t.hasResourceProperties("AWS::Lambda::Alias", { Name: "live" });
 });
 
-it("injects every secret from Secrets Manager and never as plain environment", () => {
+it("passes only the secret's ARN to the function, never secret values", () => {
   const t = synth();
-  const [def] = Object.values(t.findResources("AWS::ECS::TaskDefinition")) as any[];
-  const container = def.Properties.ContainerDefinitions[0];
-  expect(container.Secrets.map((s: any) => s.Name).sort()).toEqual(
-    ["ADMIN_PASSWORD", "ADMIN_SESSION_SECRET", "DB_PASSWORD", "DB_URL", "DB_USER", "GEMINI_API_KEY"],
+  const [fn] = Object.values(t.findResources("AWS::Lambda::Function")).filter(
+    (r: any) => r.Properties.Handler === "run.sh",
+  ) as any[];
+  const vars = fn.Properties.Environment.Variables;
+  expect(Object.keys(vars).sort()).toEqual(
+    ["APP_SECRET_ID", "AWS_LAMBDA_EXEC_WRAPPER", "AWS_LWA_PORT", "AWS_LWA_READINESS_CHECK_PATH", "CONFIG_REVISION"],
   );
-  expect(container.Environment.map((e: any) => e.Name)).toEqual(["JAVA_TOOL_OPTIONS"]);
+  expect(vars.APP_SECRET_ID).toEqual({ Ref: expect.stringMatching(/^AppSecret/) });
 });
 
-it("alerts by email on lost tasks and 5xx, and lets only main of the repo deploy", () => {
+it("alerts by email on errors and throttles, and lets only main of the repo deploy", () => {
   const t = synth();
   t.resourceCountIs("AWS::CloudWatch::Alarm", 2);
   t.hasResourceProperties("AWS::SNS::Subscription", { Protocol: "email", Endpoint: "ops@example.com" });
@@ -57,24 +73,8 @@ it("alerts by email on lost tasks and 5xx, and lets only main of the repo deploy
   });
 });
 
-it("serves HTTPS through CloudFront to an internal ALB with caching disabled", () => {
-  const t = synth();
-  t.hasResourceProperties("AWS::ElasticLoadBalancingV2::LoadBalancer", { Scheme: "internal" });
-  t.resourceCountIs("AWS::CloudFront::VpcOrigin", 1);
-  t.hasResourceProperties("AWS::CloudFront::Distribution", {
-    DistributionConfig: Match.objectLike({
-      DefaultCacheBehavior: Match.objectLike({
-        ViewerProtocolPolicy: "https-only",
-        CachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad", // Managed-CachingDisabled
-        AllowedMethods: Match.arrayWith(["POST", "DELETE"]),
-      }),
-    }),
-  });
-  // ALB 보안 그룹에 0.0.0.0/0 인바운드가 없어야 한다
-  const sgs = Object.values(t.findResources("AWS::EC2::SecurityGroup")) as any[];
-  for (const sg of sgs) for (const r of sg.Properties.SecurityGroupIngress ?? []) expect(r.CidrIp).not.toBe("0.0.0.0/0");
-});
-
-it("can start with zero tasks for the first deploy", () => {
-  synth({ desiredCount: 0 }).hasResourceProperties("AWS::ECS::Service", { DesiredCount: 0 });
+it("creates only the secret in secretOnly mode", () => {
+  const t = synth({ secretOnly: true });
+  t.resourceCountIs("AWS::SecretsManager::Secret", 1);
+  t.resourceCountIs("AWS::Lambda::Function", 0);
 });

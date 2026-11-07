@@ -250,5 +250,4 @@ set -a; . ../.env.local; set +a
 다른 터미널에서 `npm run dev` → 관리자 → 상담 준비. 개발 서버가 `/api/admin`을 8080으로 넘긴다.
 로그인은 HttpOnly 쿠키(12시간), 같은 IP에서 5회 실패하면 10분 잠금.
 
-배포: `backend/Dockerfile`로 이미지를 만들고 위 환경변수를 실행 환경에 넣는다. 프런트와 같은 출처에서
-`/api/admin`이 이 서버로 가도록 rewrite가 필요하다(운영 전환 2단계).
+배포: AWS Lambda(SnapStart) — `infra/README.md` 참고.

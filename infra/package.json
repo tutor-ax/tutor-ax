@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:backend": "cd ../backend && ./mvnw -q package -DskipTests && rm -rf ../infra/build/lambda && mkdir -p ../infra/build/lambda && cp target/backend-0.0.1-SNAPSHOT.jar ../infra/build/lambda/app.jar && cp lambda/run.sh ../infra/build/lambda/run.sh && chmod +x ../infra/build/lambda/run.sh",
     "cdk": "cdk",
     "synth": "cdk synth",
     "test": "vitest run"
