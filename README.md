@@ -227,3 +227,17 @@ SOLAPI 웹/API 직접 연동 표준 단가. 국내 VAT 10%를 가정한 포함 �
 - [4] [SOLAPI 카카오 메시지 FAQ](https://solapi.com/guides/kakao-faq) — 채널 연동·템플릿 검수·발신번호 및 발송 조건.
 
 이번 확장 범위와 미이전 항목은 [2단계 기록](docs/PHASE2.md)에 명시했습니다. 원본 출처·차이·제약은 [마이그레이션 기록](docs/MIGRATION.md)을 참고하세요. 원본 코드의 공개·재배포 권한을 새로 부여하는 라이선스를 선언하지 않습니다.
+
+## 관리자 백엔드 (backend/, Spring Boot · 읽기 전용)
+
+상담 준비 탭의 "실제 DB" 구역이 쓰는 API. 읽기 전용 DB 계정으로만 붙는다.
+
+```
+cd backend
+set -a; . ../.env.local; set +a        # DB_URL, DB_USER, DB_PASSWORD
+export ADMIN_PASSWORD='<관리자 화면에서 입력할 비밀번호>'   # 없으면 /api/admin/** 전부 503
+./mvnw spring-boot:run                  # 127.0.0.1:8080
+```
+
+다른 터미널에서 `npm run dev` → 관리자 → 상담 준비. 개발 서버가 `/api/admin`을 8080으로 넘긴다.
+배포 빌드는 아직 이 API에 연결되지 않는다(운영 전환 2단계 Vercel rewrite에서 연결).

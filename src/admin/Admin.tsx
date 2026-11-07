@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "./admin.css";
 import { counselBrief, counselCard, type CounselRow } from "../counsel";
+import CounselLive from "./CounselLive";
 
 type Student = { id: string; name: string };
 type ClassRoom = {
@@ -1172,6 +1173,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                   />
                 );
               })()}
+              <CounselLive />
             </>
           )}
           {tab === "문자 미리보기" && (
