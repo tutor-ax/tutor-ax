@@ -20,8 +20,10 @@ import org.springframework.web.client.RestClient;
 public class QuestionsController {
     static final int MAX_LINES = 20;
     static final int MAX_LINE = 200;
+    // 버전을 고정한다(-latest 별칭은 Google 쪽 교체로 답변이 조용히 바뀔 수 있다). 2026-11-07 측정: flash 약 10초 → flash-lite 약 2초, 질문 품질 비슷.
+    static final String MODEL = "gemini-3.5-flash-lite";
     private static final String URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+            "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent";
     private final String apiKey;
     private final RestClient http;
 
