@@ -1,4 +1,4 @@
-# 운영 전환 계획 — Spring Boot + Docker/k8s
+# 운영 전환 계획 — Spring Boot + AWS Lambda
 
 작성 2026-11-04. 합성 데이터 데모를 버리고 실제 학원 DB에 연결된 운영 서비스로
 전환한다. 포트폴리오는 공개 링크 대신 운영 화면 녹화 영상으로 대체한다.
@@ -9,10 +9,32 @@
 |---|---|
 | 공개 데모 | 버린다. 운영 전용. 포폴은 영상 녹화 |
 | 백엔드 | Spring Boot (조교 점수 입력까지 전부 이전) |
-| 인프라 | Docker + k8s |
+| 인프라 | ~~Docker + k8s~~ → **AWS Lambda + SnapStart, CDK** (2026-11-07 변경, 아래 "변경된 결정") |
 | 프런트 | 현재 Vite+React 유지, 게이트웨이만 교체 |
-| 배포 위치 | 기존 Vercel 프로젝트 하위 경로 |
+| 배포 위치 | ~~기존 Vercel 프로젝트 하위 경로~~ → **tutor-ax 전용 Vercel 프로젝트** (tutor-ax.vercel.app) |
 | 더미 데이터 | 사용자가 나중에 직접 채움 |
+
+## 변경된 결정 (2026-11-07)
+
+| 항목 | 이전 | 지금 | 이유 |
+|---|---|---|---|
+| 인프라 | Docker + k8s | AWS Lambda(ARM64, SnapStart) + Lambda Web Adapter, CDK로 정의 (`tutor-server/infra`) | 백엔드 사용자는 선생님 몇 명, 요청은 하루 수십~수백 건. 상시 서버(Fargate 2 + ALB, 추정 월 $55~60)를 만들어 배포까지 했다가 고정비 때문에 교체 |
+| 백엔드 저장소 | — | `tutor-ax/tutor-server` 하나 (학생 API + 관리자 상담 카드 API) | 관리자 API를 tutor-ax에 따로 만들었다가 옮김 |
+| 프런트 배포 | score-system Vercel 하위 경로 | tutor-ax 전용 Vercel, `vercel.json`이 `/api/*`를 나눔 | score-system의 `vercel.json`을 고치려면 고객 저장소 변경 + 원장 승인이 필요 |
+| 배포 인증 | — | GitHub OIDC, 신뢰 조건은 저장소 고정 식별자(`repo:owner@id/repo@id`) | 장기 키 없음, 저장소 이름 변경·이전 뒤 가로채기 방지 |
+
+5단계(k8s)는 필요 없어졌다. 아래 "3. k8s를 트래픽으로 정당화하지 않는다"의 판단이 결국 구조를 바꿨다.
+
+## 진행 현황 (2026-11-07)
+
+| 단계 | 상태 |
+|---|---|
+| 0. 데모 자산 제거 | 완료 (PR #3) |
+| 1. Spring Boot 읽기 전용 API | 완료 — tutor-server `GET /api/student/me`, Lambda에 배포됨 |
+| 2. Vercel rewrite 연결 | 관리자(`/api/admin/*`) 완료. 학생(`/api/student/me`)은 PR #8 (초안) |
+| 3. 프런트 연결 교체 | PR #8 (초안). **합치기 전 조건: 같은 쿠키로 parent-login GET과 `/api/student/me` 응답이 동일** |
+| 4. 쓰기 경로 | 시작 전. 쓰기 권한 DB 계정, send-sms 인증·키 재발급, 원장과 범위 합의가 선행 |
+| 5. k8s | 취소 (Lambda로 대체) |
 
 ## 기존 시스템 실측
 
@@ -200,7 +222,10 @@ Flyway는 당분간 붙이지 않는다.
 - `data_history` 트리거 동작을 매 표마다 확인
 - send-sms 소스 확보가 선행 조건
 
-### 5. k8s
+### 5. k8s — 취소
+
+2026-11-07 Lambda로 대체(위 "변경된 결정"). 아래는 원래 계획 기록.
+
 
 여기서부터는 서비스 동작이 아니라 운영 역량의 문제다.
 
