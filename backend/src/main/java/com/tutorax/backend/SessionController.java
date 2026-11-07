@@ -25,7 +25,8 @@ public class SessionController {
     private final byte[] password;
     private final AdminSession session;
     private final Clock clock;
-    // shortcut: 실패 횟수를 메모리에 둔다 — 파드가 여러 개면 파드마다 따로 센다. 다중 파드 배포 시 DB/Redis로.
+    // shortcut: 실패 횟수를 작업(컨테이너)마다 메모리에 센다 — ECS 작업 2개면 잠금까지 최대 2배 시도 가능. 필요해지면 DynamoDB로.
+    // Vercel rewrite를 거치면 IP가 Vercel 출구 주소로 보여 여러 사용자가 같은 잠금을 공유할 수 있다.
     private final Map<String, long[]> failures = new ConcurrentHashMap<>(); // ip → [횟수, 잠금 해제 epoch초]
 
     @Autowired
