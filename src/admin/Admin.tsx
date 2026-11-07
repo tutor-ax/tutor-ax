@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import "./admin.css";
+import { counselBrief, counselCard, type CounselRow } from "../counsel";
+import CounselLive from "./CounselLive";
 
 type Student = { id: string; name: string };
 type ClassRoom = {
@@ -249,6 +251,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
       ),
   );
   const [notice, setNotice] = useState("");
+  const [counselStudent, setCounselStudent] = useState("");
   const update = (next: ClassRoom) =>
     setClasses(classes.map((c) => (c.id === next.id ? next : c)));
   return (
@@ -267,6 +270,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
           "출석·미인증",
           "조교 메모",
           "클리닉 배정표",
+          "상담 준비",
           "문자 미리보기",
           "변경 이력",
           "주차 관리",
@@ -1098,6 +1102,78 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                   </fieldset>
                 );
               })}
+            </>
+          )}
+          {tab === "상담 준비" && current && (
+            <>
+              <p>
+                대면 상담 전에 보는 학원 내부 참고 카드입니다. 숫자는 기록에서
+                계산하며, 상담 질문 AI는 백엔드 연결 후 붙습니다.
+              </p>
+              <label>
+                학생 선택
+                <select
+                  value={counselStudent}
+                  onChange={(e) => setCounselStudent(e.target.value)}
+                >
+                  <option value="">학생을 선택하세요</option>
+                  {current.students.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {(() => {
+                const s = current.students.find((x) => x.id === counselStudent);
+                if (!s) return null;
+                const ws = weeks[selected] ?? [];
+                // 데모 기록 → DB 모양 행. 데모엔 클리닉 출석 기록이 없어 clinic_target은 넣지 않는다("참석 0주" 오표시 방지).
+                const periods = ws.map((w, i) => ({
+                  id: i + 1,
+                  label: w.name,
+                  item_config: {
+                    items: w.items.map((it) => ({
+                      key: it.id,
+                      label: it.name,
+                      max: it.max,
+                      cut: it.cut,
+                    })),
+                  },
+                }));
+                const rows: CounselRow[] = ws.flatMap((w, i) =>
+                  current.students.map((st) => {
+                    const t = w.tracking?.[st.id];
+                    const scores: Record<string, number | null> = {};
+                    const retest: Record<string, boolean> = {};
+                    w.items.forEach((it) => {
+                      const m = w.marks[st.id]?.[it.id];
+                      scores[it.id] = m && m.score !== "" ? Number(m.score) : null;
+                      if (m && m.score !== "" && Number(m.score) < it.cut)
+                        retest[it.id] = m.passed;
+                    });
+                    return {
+                      student_id: st.id,
+                      week_id: i + 1,
+                      item_scores: scores,
+                      retest_pass: retest,
+                      attendance: t ? t.attendance : undefined,
+                      homework_rate: t && t.rate !== "" ? Number(t.rate) : null,
+                      clinic_memo: w.clinic?.[st.id]?.memo ?? null,
+                    };
+                  }),
+                );
+                const brief = counselBrief(periods, rows, s.id, null, Date.now(), []);
+                return (
+                  <textarea
+                    aria-label="상담 카드"
+                    readOnly
+                    rows={14}
+                    value={counselCard(`${s.name} · ${current.name}`, ws.length, brief)}
+                  />
+                );
+              })()}
+              <CounselLive />
             </>
           )}
           {tab === "문자 미리보기" && (

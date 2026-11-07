@@ -212,3 +212,16 @@ it("creates isolated mock exams with dynamic scores, retests and reversible abse
     "가상 안내",
   );
 });
+it("builds an internal counsel card from the demo records", () => {
+  render(<Admin />);
+  change("가상 학생 A 단어 점수", "50");
+  change("가상 학생 B 단어 점수", "90");
+  click("상담 준비");
+  change("학생 선택", "student-a");
+  const card = (screen.getByLabelText("상담 카드") as HTMLTextAreaElement).value;
+  expect(card).toContain("[가상 학생 A · 데모 A]  최근 1주차 기준");
+  expect(card).toContain("총점 반 평균 대비: 1주차 -20");
+  expect(card).toContain("커트라인 미달 많은 항목: 단어 1/1주");
+  expect(card).toContain("재시험 기록: 통과 0 · 미통과 1 (단어 1)");
+  expect(card).not.toContain("클리닉: 대상");
+});

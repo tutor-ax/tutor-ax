@@ -1,0 +1,22 @@
+{
+  "name": "tutor-ax-infra",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:backend": "cd ../backend && ./mvnw -q package -DskipTests && rm -rf ../infra/build/lambda && mkdir -p ../infra/build/lambda && cp target/backend-0.0.1-SNAPSHOT.jar ../infra/build/lambda/app.jar && cp lambda/run.sh ../infra/build/lambda/run.sh && chmod +x ../infra/build/lambda/run.sh",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.275.0",
+    "constructs": "10.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "aws-cdk": "2.1148.0",
+    "tsx": "4.23.15",
+    "typescript": "5.7.3",
+    "vitest": "5.1.0"
+  }
+}
