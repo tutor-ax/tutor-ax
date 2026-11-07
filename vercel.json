@@ -1,7 +1,20 @@
 {
   "rewrites": [
-    { "source": "/api/parent-login", "destination": "https://rcpzinsdocmpnfxkfbil.supabase.co/functions/v1/parent-login" },
-    { "source": "/api/admin/:path*", "destination": "https://utwte33v56z4ztpyogyymgkkg40rlexe.lambda-url.ap-northeast-2.on.aws/api/admin/:path*" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/parent-login",
+      "destination": "https://rcpzinsdocmpnfxkfbil.supabase.co/functions/v1/parent-login"
+    },
+    {
+      "source": "/api/student/me",
+      "destination": "https://utwte33v56z4ztpyogyymgkkg40rlexe.lambda-url.ap-northeast-2.on.aws/api/student/me"
+    },
+    {
+      "source": "/api/admin/:path*",
+      "destination": "https://utwte33v56z4ztpyogyymgkkg40rlexe.lambda-url.ap-northeast-2.on.aws/api/admin/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }

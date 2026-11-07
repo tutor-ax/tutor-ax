@@ -14,19 +14,26 @@ export const scoreFixture = JSON.parse(
 );
 
 export const PARENT_LOGIN_GLOB = "**/api/parent-login";
+/** Score reads go to tutor-server's read-only endpoint (same cookie). */
+export const STUDENT_ME_GLOB = "**/api/student/me";
 
 /** Serve the fixture as an established session for every parent-login call. */
 export async function stubSignedIn(page: Page, data: unknown = scoreFixture) {
-  await page.route(PARENT_LOGIN_GLOB, (route: Route) => {
+  const handler = (route: Route) => {
     if (route.request().method() === "DELETE") {
       return route.fulfill({ status: 200, json: { ok: true } });
     }
     return route.fulfill({ status: 200, json: data as never });
-  });
+  };
+  await page.route(PARENT_LOGIN_GLOB, handler);
+  await page.route(STUDENT_ME_GLOB, handler);
 }
 
 /** Answer 401 until credentials are posted, then serve the fixture. */
 export async function stubSignedOut(page: Page, data: unknown = scoreFixture) {
+  await page.route(STUDENT_ME_GLOB, (route: Route) =>
+    route.fulfill({ status: 401, json: { error: "session_expired" } }),
+  );
   await page.route(PARENT_LOGIN_GLOB, (route: Route) => {
     const method = route.request().method();
     if (method === "POST") {
