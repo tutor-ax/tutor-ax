@@ -59,14 +59,16 @@ for (const width of [390, 1440])
     await page.setViewportSize({ width, height: 900 });
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    // Scores come from the session endpoint, so that call is expected. Study
-    // screens must still be local-only: anything OTHER than parent-login here
-    // would mean vocabulary or passages started calling a server.
+    // Scores come from the session endpoints (read: /api/student/me, login/logout:
+    // /api/parent-login), so those calls are expected. Study screens must still be
+    // local-only: any OTHER call here would mean vocabulary or passages started calling a server.
+    const sessionPaths = ["/api/student/me", "/api/parent-login"];
     const api: string[] = [];
     page.on("request", (r) => {
+      const path = new URL(r.url()).pathname;
       if (
         ["fetch", "xhr"].includes(r.resourceType()) &&
-        !new URL(r.url()).pathname.endsWith("/api/parent-login")
+        !sessionPaths.some((p) => path.endsWith(p))
       )
         api.push(r.url());
     });

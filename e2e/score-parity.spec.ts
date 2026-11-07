@@ -41,10 +41,10 @@ async function isolate(page: Page, legacy = false, loggedIn = true) {
         json: legacy && loggedIn ? fixture : {},
       });
     }
-    // The React app reads scores from this same-origin endpoint. It is served
-    // from the fixture so the comparison stays offline and deterministic; any
-    // OTHER /api/ path would be an unexpected call and still fails the test.
-    if (url.pathname === "/api/parent-login") {
+    // The React app reads scores from /api/student/me (tutor-server) and logs in/out
+    // through /api/parent-login. Both are served from the fixture so the comparison stays
+    // offline and deterministic; any OTHER /api/ path is unexpected and still fails the test.
+    if (url.pathname === "/api/parent-login" || url.pathname === "/api/student/me") {
       // Mirror the real cookie lifecycle: logging out must make later
       // session lookups fail, or "reload after logout" proves nothing.
       if (route.request().method() === "DELETE") {

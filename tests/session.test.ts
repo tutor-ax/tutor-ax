@@ -3,6 +3,7 @@ import {
   GatewayUnavailable,
   InvalidCredentials,
   PARENT_LOGIN_PATH,
+  STUDENT_ME_PATH,
   createApiGateway,
 } from "../src/gateway";
 import { fixtureData } from "./fixtures";
@@ -15,13 +16,23 @@ let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   fetchMock = vi.fn();
 });
-const gateway = () => createApiGateway(PARENT_LOGIN_PATH, fetchMock as never);
+const gateway = () => createApiGateway(PARENT_LOGIN_PATH, fetchMock as never, STUDENT_ME_PATH);
+
+it("reads scores from tutor-server and keeps login and logout on parent-login", async () => {
+  fetchMock.mockResolvedValue(respond(fixtureData()));
+  await gateway().resume();
+  await gateway().logout();
+  expect(fetchMock.mock.calls.map(([path, init]) => `${init.method} ${path}`)).toEqual([
+    "GET /api/student/me",
+    "DELETE /api/parent-login",
+  ]);
+});
 
 it("sends the session cookie on every call to the same-origin endpoint", async () => {
   fetchMock.mockResolvedValue(respond(fixtureData()));
   await gateway().resume();
   const [path, init] = fetchMock.mock.calls[0];
-  expect(path).toBe("/api/parent-login");
+  expect(path).toBe("/api/student/me");
   // The session is an HttpOnly SameSite=Lax cookie: without credentials the
   // browser drops it and every request looks signed out.
   expect(init.credentials).toBe("same-origin");

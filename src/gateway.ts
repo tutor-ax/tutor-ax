@@ -52,6 +52,13 @@ export class GatewayUnavailable extends Error {
  */
 export const PARENT_LOGIN_PATH = "/api/parent-login";
 
+/**
+ * Read-only score endpoint of tutor-server (migration phase 1–3). It verifies the
+ * same `parent_session` cookie, so login and logout stay on parent-login.
+ * Rollback: point the `/api/student/me` rewrite in vercel.json back at parent-login.
+ */
+export const STUDENT_ME_PATH = "/api/student/me";
+
 async function readJson(response: Response): Promise<unknown> {
   const text = await response.text();
   if (!text) return null;
@@ -85,10 +92,11 @@ function asLoginData(payload: unknown): LoginData {
 export function createApiGateway(
   path: string = PARENT_LOGIN_PATH,
   fetchImpl: typeof fetch = fetch,
+  readPath: string = STUDENT_ME_PATH,
 ): ScoreGateway {
-  async function call(init: RequestInit): Promise<Response> {
+  async function call(init: RequestInit, url: string = path): Promise<Response> {
     try {
-      return await fetchImpl(path, {
+      return await fetchImpl(url, {
         // The session lives in an HttpOnly cookie, so every call must carry
         // credentials even though the request is same-origin.
         credentials: "same-origin",
@@ -100,7 +108,7 @@ export function createApiGateway(
   }
   return {
     async resume() {
-      const response = await call({ method: "GET" });
+      const response = await call({ method: "GET" }, readPath);
       // 401 is the documented "no valid session" answer, not a failure.
       if (response.status === 401) return null;
       if (!response.ok) throw new GatewayUnavailable();
