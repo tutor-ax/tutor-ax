@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./admin.css";
 import { counselBrief, counselCard, type CounselRow } from "../counsel";
 import CounselLive from "./CounselLive";
+import RosterLive from "./RosterLive";
 
 type Student = { id: string; name: string };
 type ClassRoom = {
@@ -896,6 +897,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
               )}
             </>
           )}
+          {tab === "반 관리" && <RosterLive mode="classes" />}
           {tab === "학생 관리" && current && (
             <>
               <label>
@@ -959,6 +961,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
               </button>
             </>
           )}
+          {tab === "학생 관리" && <RosterLive mode="students" />}
           {tab === "클리닉 배정표" && current && week && (
             <>
               <p>선택한 반·주차의 클리닉 일정</p>

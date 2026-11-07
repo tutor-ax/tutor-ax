@@ -10,6 +10,22 @@ export interface AdminWeek extends Period { created_at?: string }
 export class AdminUnauthorized extends Error {}
 export class AdminLocked extends Error {}
 export class AdminUnavailable extends Error {}
+/** 409: someone saved this row elsewhere (score-system or another tab) after we read it. Reload, then edit again. */
+export class AdminConflict extends Error {}
+/** 400: the server rejected a value (e.g. PIN over 4 digits, unknown day). */
+export class AdminInvalid extends Error {}
+
+// 반·학생 관리(실제 DB). 학년 고1/고2, 요일 월~일, PIN 4자리 — score-system과 같은 규칙을 서버가 검사한다.
+export interface RosterClass { id: number; name: string; grade: string | null; day: string; time: string | null }
+export interface RosterStudent {
+  id: number;
+  name: string;
+  pin: string;
+  phone: string | null;
+  student_phone: string | null;
+  note: string | null;
+  is_active: boolean;
+}
 
 export function createAdminApi(fetchImpl: typeof fetch = fetch) {
   async function call(path: string, init: RequestInit = {}, timeoutMs = 15000) {
@@ -25,6 +41,8 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     }
     if (res.status === 401) throw new AdminUnauthorized();
     if (res.status === 429) throw new AdminLocked();
+    if (res.status === 409) throw new AdminConflict();
+    if (res.status === 400) throw new AdminInvalid();
     if (!res.ok) throw new AdminUnavailable(`status ${res.status}`);
     return res;
   }
@@ -38,7 +56,16 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  const send = (method: string, body: unknown): RequestInit => ({ ...json(body), method });
   return {
+    rosterClasses: () => list<RosterClass[]>("/roster/classes"),
+    rosterStudents: (classId: number) => list<RosterStudent[]>(`/roster/students?classId=${classId}`),
+    addClass: async (c: Omit<RosterClass, "id">) => void (await call("/roster/classes", json(c))),
+    addStudent: async (s: { name: string; pin: string; class_id: number; phone: string; student_phone: string }) =>
+      void (await call("/roster/students", json(s))),
+    // before = 화면이 읽어 온 값. 서버는 그 값이 그대로일 때만 바꾼다(덮어쓰기 방지).
+    patch: async (kind: "classes" | "students", id: number, before: object, after: object) =>
+      void (await call(`/roster/${kind}/${id}`, send("PATCH", { before, after }))),
     login: async (password: string) => void (await call("/session", json({ password }))),
     logout: async () => void (await call("/session", { method: "DELETE" })),
     classes: () => list<AdminClass[]>("/classes"),
