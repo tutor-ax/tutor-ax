@@ -1,6 +1,6 @@
 {
   "app": "npx tsx bin/app.ts",
   "context": {
-    "githubRepo": "yooncandooit/tutor-ax"
+    "githubRepo": "tutor-ax/tutor-ax"
   }
 }
