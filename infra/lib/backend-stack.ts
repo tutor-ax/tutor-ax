@@ -11,7 +11,11 @@ import * as subs from "aws-cdk-lib/aws-sns-subscriptions";
 import type { Construct } from "constructs";
 
 export interface BackendStackProps extends cdk.StackProps {
-  /** GitHub Actions가 배포할 저장소 (owner/name) */
+  /**
+   * GitHub Actions가 배포할 저장소. OIDC 토큰 sub의 저장소 부분과 글자 그대로 같아야 한다.
+   * 이 저장소는 고정 식별자(immutable subject)를 써서 `owner@ownerId/repo@repoId` 꼴이다
+   * (`gh api repos/<owner>/<repo>/actions/oidc/customization/sub`로 확인). 이름이 바뀌거나 옮겨져도 다른 저장소가 가로챌 수 없다.
+   */
   githubRepo: string;
   /** 경보를 받을 이메일. 배포 후 받은 확인 메일을 눌러야 구독된다. */
   alarmEmail?: string;

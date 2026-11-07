@@ -18,18 +18,18 @@ jobs:
     runs-on: ubuntu-latest # jar는 아키텍처와 무관 — ARM Lambda용이어도 일반 러너로 충분
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with: { distribution: temurin, java-version: "21", cache: maven }
       - name: backend tests
         run: cd backend && ./mvnw -q test
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: "22", cache: npm, cache-dependency-path: infra/package-lock.json }
       - name: infra tests
         run: cd infra && npm ci && npm test
       - name: build lambda package
         run: cd infra && npm run build:backend
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ap-northeast-2

@@ -1,6 +1,6 @@
 {
   "app": "npx tsx bin/app.ts",
   "context": {
-    "githubRepo": "tutor-ax/tutor-ax"
+    "githubRepo": "tutor-ax@353161487/tutor-ax@1371627040"
   }
 }
