@@ -1,11 +1,11 @@
 // 관리자 읽기 전용 API(backend/ Spring Boot). 로그인하면 HttpOnly 쿠키(admin_session)로 확인한다 — 비밀번호를 들고 다니지 않는다.
-import type { Period } from "./domain";
+import type { Item, Period } from "./domain";
 import type { CounselRow } from "./counsel";
 
 export const ADMIN_API_PATH = "/api/admin";
 export interface AdminClass { id: number; name: string; grade: string | null }
 export interface AdminStudent { id: number; name: string; created_at: string | null }
-export interface AdminWeek extends Period { created_at?: string }
+export interface AdminWeek extends Period { created_at?: string; class_id?: number; memo?: string | null }
 
 export class AdminUnauthorized extends Error {}
 export class AdminLocked extends Error {}
@@ -75,8 +75,18 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     addWeeks: async (base: string, weeks: { class_id: number; test_date: string }[]) =>
       void (await call("/roster/weeks", json({ base, weeks }))),
     // 학생 한 명의 바뀐 칸만. 칸 이름: score:<항목>, retest:<항목>, homework_rate·homework_eval·attendance·clinic_memo.
-    saveScore: async (s: { week_id: number; student_id: number; items: string[]; before: object; after: object }) =>
+    saveScore: async (s: { week_id: number; student_id: number; items: string[]; no_homework: boolean; before: object; after: object }) =>
       void (await call("/roster/scores", send("PUT", s))),
+    // 주차 도구(점수 입력 탭). 서버가 그룹 전체를 한 번에 바꾸고, 화면이 읽은 뒤 바뀌었으면 409.
+    allWeeks: () => list<AdminWeek[]>("/roster/weeks"),
+    saveMemo: async (weekId: number, before: string, after: string) =>
+      void (await call(`/roster/weeks/${weekId}/memo`, send("PUT", { before, after }))),
+    setNoHomework: async (weekId: number, noHomework: boolean) =>
+      void (await call(`/roster/weeks/${weekId}/no-homework`, send("PUT", { no_homework: noHomework }))),
+    saveItemConfig: async (weekId: number, c: { before: unknown; group_id: string | null; cut_all: boolean; items: Item[] }) =>
+      void (await call(`/roster/weeks/${weekId}/item-config`, send("PUT", c))),
+    saveGroup: async (weekId: number, weekIds: number[], before: Record<number, string | null>) =>
+      void (await call(`/roster/weeks/${weekId}/group`, send("PUT", { week_ids: weekIds, before }))),
     // before = 화면이 읽어 온 값. 서버는 그 값이 그대로일 때만 바꾼다(덮어쓰기 방지).
     patch: async (kind: "classes" | "students", id: number, before: object, after: object) =>
       void (await call(`/roster/${kind}/${id}`, send("PATCH", { before, after }))),
