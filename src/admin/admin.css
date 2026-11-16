@@ -424,3 +424,75 @@
 .admin-app [aria-label="미인증 명단"] {
   margin-top: 32px;
 }
+.admin-app .clinic-card {
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 22px;
+}
+.admin-app .clinic-grid td {
+  vertical-align: top;
+  min-width: 96px;
+}
+.admin-app .clinic-grid td.clinic-untimed {
+  background: var(--admin-soft);
+}
+.admin-app .clinic-chip {
+  display: block;
+  white-space: nowrap;
+  padding: 2px 0;
+}
+.admin-app .clinic-hw,
+.admin-app .clinic-note,
+.admin-app .clinic-exact {
+  color: var(--admin-muted);
+  font-size: 11px;
+  margin-left: 3px;
+}
+.admin-app .clinic-exact {
+  font-weight: 700;
+}
+.admin-app .clinic-item,
+.admin-app .clinic-hwonly {
+  display: inline-block;
+  margin-left: 3px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  background: #fff4f4;
+  color: #b32c36;
+}
+.admin-app .clinic-hwonly {
+  background: var(--admin-soft);
+  color: var(--admin-muted);
+}
+.admin-app .clinic-legend {
+  font-size: 11px;
+  color: var(--admin-muted);
+}
+.admin-app button.clinic-att {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  margin-right: 4px;
+  border-radius: 50%;
+  border: 1.6px solid #b8b2a7;
+  background: #fff;
+  color: transparent;
+  font-size: 10px;
+}
+.admin-app button.clinic-att.on {
+  background: var(--admin-accent);
+  border-color: var(--admin-accent);
+  color: #fff;
+}
+.admin-app .came {
+  background: #f3eefb;
+  border-radius: 6px;
+}
