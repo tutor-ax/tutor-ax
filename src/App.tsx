@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { InvalidCredentials, type LoginData, type ScoreGateway } from "./gateway";
+import type { HomeworkApi } from "./photoApi";
 import Scores from "./Scores";
 import academyLogo from "./assets/academy-logo.svg";
 import Admin from "./admin/Admin";
@@ -10,7 +11,7 @@ import { currentRoute, navigationUrl } from "./routing";
 function locationRoute() {
   return currentRoute(new URL(location.href));
 }
-export default function App({ gateway }: { gateway: ScoreGateway }) {
+export default function App({ gateway, homework }: { gateway: ScoreGateway; homework?: HomeworkApi }) {
   const [data, setData] = useState<LoginData | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
@@ -284,6 +285,7 @@ export default function App({ gateway }: { gateway: ScoreGateway }) {
           <Scores
             data={data}
             onLogout={logout}
+            homework={homework}
             onStudy={(target) =>
               navigate(target === "vocab" ? "/vocab/" : "/vocab/?go=passage")
             }
