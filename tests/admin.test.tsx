@@ -34,7 +34,7 @@ it("edits weekly clinic plans and previews SMS without sending or saving anythin
   change("가상 학생 A 클리닉 메모", "가상 복습 안내");
   change("가상 학생 A 클리닉 요일", "수");
   change("가상 학생 A 클리닉 시간", "16:30");
-  click("문자 미리보기");
+  click("문자 발송");
   expect(
     (screen.getByLabelText("문자 내용") as HTMLTextAreaElement).value,
   ).toContain("가상 복습 안내");

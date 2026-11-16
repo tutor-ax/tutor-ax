@@ -1,6 +1,7 @@
 // 관리자 읽기 전용 API(backend/ Spring Boot). 로그인하면 HttpOnly 쿠키(admin_session)로 확인한다 — 비밀번호를 들고 다니지 않는다.
 import type { Item, Period, ScoreRow } from "./domain";
 import type { CounselRow } from "./counsel";
+import type { HistoryEntry } from "./history";
 import type { HomeworkPhoto } from "./photoApi";
 
 export const ADMIN_API_PATH = "/api/admin";
@@ -32,6 +33,11 @@ export interface RosterStudent {
   note: string | null;
   is_active: boolean;
 }
+
+// 문자: 번호는 서버가 학생 id로 찾는다. key가 같은 문자는 서버가 두 번 보내지 않는다(재시도 안전).
+export interface SmsMessage { studentId: number; recipient: "parent" | "student"; text: string; key: string }
+export interface SmsResult { studentId: number; recipient: string; to: string; ok: boolean; msg: string }
+export interface SmsResponse { success: number; fail: number; dryRun?: number; duplicate?: number; results: SmsResult[] }
 
 /** 옮길 점수 행 하나: 기존 주차로(to_week_id), 새 주차로(new_label), 둘 다 없으면 옮기지 않음. */
 export interface MovePlan { from_week_id: number; to_week_id?: number; new_label?: string }
@@ -79,7 +85,7 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     // 체크한 반들을 한 비교 그룹으로 한 번에 추가한다. 서버는 전부 넣거나 하나도 넣지 않는다.
     addWeeks: async (base: string, weeks: { class_id: number; test_date: string }[]) =>
       void (await call("/roster/weeks", json({ base, weeks }))),
-    // 학생 한 명의 바뀐 칸만. 칸 이름: score:<항목>, retest:<항목>, homework_rate·homework_eval·attendance·clinic_memo.
+    // 학생 한 명의 바뀐 칸만. 칸 이름: score:<항목>, retest:<항목>, homework_rate·homework_eval·attendance·clinic_memo (되돌리기만 hw_cert·no_homework도).
     saveScore: async (s: { week_id: number; student_id: number; items: string[]; no_homework: boolean; before: object; after: object }) =>
       void (await call("/roster/scores", send("PUT", s))),
     // 주차 도구(점수 입력 탭). 서버가 그룹 전체를 한 번에 바꾸고, 화면이 읽은 뒤 바뀌었으면 409.
@@ -115,12 +121,16 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     // before = 화면이 읽어 온 값. 서버는 그 값이 그대로일 때만 바꾼다(덮어쓰기 방지).
     patch: async (kind: "classes" | "students", id: number, before: object, after: object) =>
       void (await call(`/roster/${kind}/${id}`, send("PATCH", { before, after }))),
+    // 300건을 8개씩 보내면 20초 남짓 걸릴 수 있어 Lambda 시간 제한(30초)에 맞춘다.
+    sendSms: async (messages: SmsMessage[]) => (await (await call("/sms", json({ messages }), 30000)).json()) as SmsResponse,
     login: async (password: string) => void (await call("/session", json({ password }))),
     logout: async () => void (await call("/session", { method: "DELETE" })),
     classes: () => list<AdminClass[]>("/classes"),
     students: (classId: number) => list<AdminStudent[]>(`/classes/${classId}/students`),
     weeks: (classId: number) => list<AdminWeek[]>(`/classes/${classId}/weeks`),
     scores: (weekIds: number[]) => list<CounselRow[]>(`/scores?weekIds=${weekIds.join(",")}`),
+    // 변경 이력(이전 7단계): 한 주차 점수 줄의 바뀌기 전·후, 최신순 최대 500건. 되돌리기는 saveScore로 한다.
+    history: (weekId: number) => list<HistoryEntry[]>(`/history?weekId=${weekId}`),
     // 과제 인증 사진(신규): 한 주차의 전체 사진. url은 5분 뒤 만료되니 오래 열어 둔 화면은 다시 불러온다.
     homeworkPhotos: (weekId: number) => list<HomeworkPhoto[]>(`/homework-photos?weekId=${weekId}`),
     // 요약 줄만 보낸다(이름·메모 원문 없음). 모델 응답이 느려 시간 제한을 길게 둔다.
