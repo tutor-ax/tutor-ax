@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { AdminConflict, type AdminWeek, type RosterClass, type RosterStudent } from "../adminApi";
 import { activeItems, isBelowCut, normalizeItemConfig, type Item, type ScoreRow } from "../domain";
-import { changedFields, fieldsOf, overMax, payloadValue, total, withCarry, type Fields, type SheetRow } from "../scoreSheet";
+import { changedFields, fieldsOf, overMax, payloadValue, SCALAR_LABELS, total, withCarry, type Fields, type SheetRow } from "../scoreSheet";
 import { sortByTestDate } from "../weekDates";
 import { groupPicks, groupStats, movedFrom, nextItemKey, weekLabel } from "../weekGroup";
+import GuestInput from "./GuestInput";
 import { useLivePanel } from "./useLivePanel";
 
 type CfgRow = { key: string; label: string; max: string; cut: string; active: boolean };
@@ -13,12 +14,11 @@ const num = (s: string) => (s.trim() === "" ? null : parseFloat(s));
 const fromRows = (rows: CfgRow[]): Item[] => rows.map((r) => ({ ...r, label: r.label.trim(), max: num(r.max), cut: num(r.cut) }));
 const filled = (v: unknown) => v != null && String(v).trim() !== "";
 
-const SCALAR_LABELS: Record<string, string> = { attendance: "출석", homework_rate: "과제%", homework_eval: "과제평가", clinic_memo: "클리닉메모" };
 // 이전 주차 과제 값 이어오기에 쓰는 최대 주차 수(서버 점수 조회 한도 24 - 이번 주차).
 const CARRY_WEEKS = 23;
 
 // 실제 DB 점수 입력. score-system 점수 입력 탭처럼 칸에서 벗어나면 그 학생의 바뀐 칸만 저장한다.
-// 주차 메모·과제 없음·항목 설정·비교 그룹도 여기서 한다. 다른 반 학생 입력, 반 이동은 아직 score-system에서 한다.
+// 주차 메모·과제 없음·항목 설정·비교 그룹·다른 반 학생 입력도 여기서 한다.
 export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
   const [classes, setClasses] = useState<RosterClass[]>([]);
   const [classId, setClassId] = useState("");
@@ -546,7 +546,12 @@ export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
         </table>
       )}
       {weekId && !busy && students.length === 0 && <p>이 반에 재원 중인 학생이 없습니다.</p>}
-      <p>다른 반 학생 입력, 반 이동은 아직 score-system에서 합니다.</p>
+      {week && (
+        <details>
+          <summary>다른 반 학생 입력</summary>
+          <GuestInput key={week.id} api={api} run={run} busy={busy} classes={classes} host={week} hostClassId={Number(classId)} />
+        </details>
+      )}
       {notice && <p role="status">{notice}</p>}
       {error && <p role="alert">{error}</p>}
     </section>

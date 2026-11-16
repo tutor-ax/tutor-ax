@@ -32,6 +32,9 @@ export interface RosterStudent {
   is_active: boolean;
 }
 
+/** 옮길 점수 행 하나: 기존 주차로(to_week_id), 새 주차로(new_label), 둘 다 없으면 옮기지 않음. */
+export interface MovePlan { from_week_id: number; to_week_id?: number; new_label?: string }
+
 export function createAdminApi(fetchImpl: typeof fetch = fetch) {
   async function call(path: string, init: RequestInit = {}, timeoutMs = 15000) {
     let res: Response;
@@ -87,6 +90,13 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
       void (await call(`/roster/weeks/${weekId}/item-config`, send("PUT", c))),
     saveGroup: async (weekId: number, weekIds: number[], before: Record<number, string | null>) =>
       void (await call(`/roster/weeks/${weekId}/group`, send("PUT", { week_ids: weekIds, before }))),
+    // 다른 반 학생 입력·반 이동. 주차 짝짓기는 화면(weekMatch.ts)이 하고, 서버는 그 계획을 검사해 한 번에 적용한다.
+    searchStudents: (q: string) => list<{ id: number; name: string; class_id: number }[]>(`/roster/students/search?q=${encodeURIComponent(q)}`),
+    scoreWeeks: (studentId: number) => list<number[]>(`/roster/students/${studentId}/score-weeks`),
+    copyWeek: async (b: { class_id: number; label: string; from_week_id: number }) =>
+      ((await (await call("/roster/weeks/copy", json(b))).json()) as { id: number }).id,
+    moveStudent: async (studentId: number, b: { from_class_id: number; to_class_id: number; dry_run: boolean; moves: MovePlan[] }) =>
+      (await (await call(`/roster/students/${studentId}/move`, json(b))).json()) as { moved: number; created: number; kept: number },
     // before = 화면이 읽어 온 값. 서버는 그 값이 그대로일 때만 바꾼다(덮어쓰기 방지).
     patch: async (kind: "classes" | "students", id: number, before: object, after: object) =>
       void (await call(`/roster/${kind}/${id}`, send("PATCH", { before, after }))),

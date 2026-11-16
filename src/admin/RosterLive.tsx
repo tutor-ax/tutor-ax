@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AdminWeek, RosterClass, RosterStudent } from "../adminApi";
+import MoveStudent from "./MoveStudent";
 import { useLivePanel } from "./useLivePanel";
 import { dateForDay, fmtMD, resolveBaseDate, sortByTestDate } from "../weekDates";
 
@@ -7,7 +8,7 @@ const GRADES = ["", "고1", "고2"];
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
 
 // 실제 DB의 반·학생 관리. score-system 반 관리·학생 관리 탭과 같은 칸을 같은 규칙으로 고친다.
-// 칸에서 벗어나면 저장한다. 삭제는 없다(퇴원으로 대신). 반 이동은 점수까지 옮겨야 해서 3단계에서 붙인다.
+// 칸에서 벗어나면 저장한다. 삭제는 없다(퇴원으로 대신). 반 이동은 점수 행까지 서버가 한 번에 옮긴다.
 // 주차는 추가만 한다. 주차 삭제는 점수까지 지우므로 score-system에 남긴다.
 export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "students" | "weeks"; fetchImpl?: typeof fetch }) {
   const [classes, setClasses] = useState<RosterClass[]>([]);
@@ -16,8 +17,9 @@ export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "stu
   const [weeks, setWeeks] = useState<AdminWeek[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
   const [baseStr, setBaseStr] = useState("");
+  const [moving, setMoving] = useState<RosterStudent | null>(null);
   const [draft, setDraft] = useState({ name: "", grade: "", day: "", time: "", pin: "", phone: "", student_phone: "" });
-  const { api, signedIn, busy, error, notice, run, login } = useLivePanel(fetchImpl, {
+  const { api, signedIn, busy, error, notice, setNotice, run, login } = useLivePanel(fetchImpl, {
     onSignedIn: async (a) => setClasses(await a.rosterClasses()),
     onConflict: () => reload(),
     invalidMessage: mode === "weeks" ? "날짜(예: 11.16)와 반 선택을 확인하세요." : "입력값을 확인하세요. (PIN 4자리 숫자, 연락처는 숫자와 -만)",
@@ -39,6 +41,7 @@ export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "stu
 
   const pickClass = (id: string) => {
     setClassId(id);
+    setMoving(null);
     setStudents([]);
     setWeeks([]);
     if (id) void run(() => reload(id));
@@ -256,11 +259,31 @@ export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "stu
                         >
                           {s.is_active ? `${s.name} 퇴원` : `${s.name} 복귀`}
                         </button>
+                        <button type="button" disabled={busy} onClick={() => setMoving(s)}>
+                          {`${s.name} 반 이동`}
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              {moving && (
+                <MoveStudent
+                  key={moving.id}
+                  api={api}
+                  run={run}
+                  busy={busy}
+                  classes={classes}
+                  student={moving}
+                  fromClassId={Number(classId)}
+                  onClose={() => setMoving(null)}
+                  onMoved={async (message) => {
+                    setMoving(null);
+                    await reload();
+                    setNotice(message);
+                  }}
+                />
+              )}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();

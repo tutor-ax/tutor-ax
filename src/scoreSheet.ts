@@ -8,7 +8,9 @@ export interface SheetRow extends ScoreRow {
   homework_eval?: string | null;
 }
 
-const blank = (v: unknown) => v === undefined || v === null || (typeof v === "string" && v.trim() === "");
+export const SCALAR_LABELS: Record<string, string> = { attendance: "출석", homework_rate: "과제%", homework_eval: "과제평가", clinic_memo: "클리닉메모" };
+
+export const blank = (v: unknown) => v === undefined || v === null || (typeof v === "string" && v.trim() === "");
 const numeric = (v: unknown) => typeof v === "number" || /^\s*-?\d+(\.\d+)?\s*$/.test(String(v));
 
 export function scoreEq(a: unknown, b: unknown) {
