@@ -26,7 +26,7 @@ export const clinicStudents: Record<number, { id: number; name: string }[]> = {
 };
 const row = (student_id: number, week_id: number, r: Record<string, unknown>) => ({
   student_id, week_id, word_score: null, reading_score: null, homework_rate: null, homework_eval: null,
-  clinic_memo: "", clinic_target: false, clinic_attend: false, ...r,
+  clinic_memo: "", clinic_target: false, clinic_attend: false as boolean | null, ...r,
 });
 export const clinicRows = [
   row(1, 11, { word_score: 10, reading_score: 25, clinic_memo: "월요일 3시", homework_rate: 80 }),

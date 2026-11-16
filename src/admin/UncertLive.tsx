@@ -7,8 +7,6 @@ import { useLivePanel } from "./useLivePanel";
 
 const key = (wid: number, sid: number) => `${wid}:${sid}`;
 
-// 실제 DB 미인증 관리. score-system처럼 최근 4주차 중 하나라도 과제평가가 있거나 과제%가 비었거나 79% 이하인 학생을 모아
-// 과제%를 고친다. 점수 행이 없는 칸은 score-system도 저장하지 않으므로 잠근다.
 export default function UncertLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
   const [classes, setClasses] = useState<AdminClass[]>([]);
   const [classId, setClassId] = useState("");

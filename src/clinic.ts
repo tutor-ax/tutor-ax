@@ -2,7 +2,6 @@ import { isBelowCut, itemVal, normalizeItemConfig, type ScoreRow } from "./domai
 import type { AdminClass, AdminWeek } from "./adminApi";
 import { resolveBaseDate, sortByTestDate } from "./weekDates";
 
-// score-system admin.html 클리닉 배정표(parseClinicMemo·clinicHwDeadline·loadClinicSchedule)와 미인증 관리(renderUncertGrid) 규칙.
 export const CLINIC_DAY_ORDER = ["월", "화", "수", "목", "금", "토", "일"];
 // 재시험지 종류가 반마다 다른 학년은 수요 집계를 반별로 나누고, 같은 시험지를 쓰는 반은 한 표로 합친다.
 const TALLY_SPLIT_BY_CLASS: Record<string, boolean> = { 고1: true, 고2: true };
@@ -165,7 +164,7 @@ export interface GradeData {
   itemOrder: { abbr: string; label: string }[];
   stale: { name: string; label: string }[];
 }
-export interface ClinicRef { weekId: number; studentId: number; attend: boolean; items: string[] }
+export interface ClinicRef { weekId: number; studentId: number; attend: boolean | null; items: string[] }
 
 const labelOf = (w: AdminWeek) => w.label || w.test_date || "";
 
@@ -230,7 +229,7 @@ export function buildClinicSchedule(classes: AdminClass[], recentWeeks: AdminWee
     const memo = (sc.clinic_memo || "").trim();
     const sid = `${sc.week_id}:${sc.student_id}`;
     const cfgItems = normalizeItemConfig(w.item_config).filter((it) => it.active);
-    refs[sid] = { weekId: sc.week_id, studentId: sc.student_id, attend: sc.clinic_attend === true, items: cfgItems.map((i) => i.key) };
+    refs[sid] = { weekId: sc.week_id, studentId: sc.student_id, attend: sc.clinic_attend ?? null, items: cfgItems.map((i) => i.key) };
     const hw = sc.homework_rate ?? null;
     const scored = cfgItems
       .map((it) => {

@@ -4,7 +4,7 @@ import ClinicLive from "../src/admin/ClinicLive";
 import UncertLive from "../src/admin/UncertLive";
 import { clinicClasses, clinicRows, clinicStudents, clinicWeeks } from "./clinic-fixture";
 
-function fakeServer(failPut = false) {
+function fakeServer(putStatus = 0) {
   const puts: Record<string, unknown>[] = [];
   const rows = clinicRows.map((r) => ({ ...r }));
   const fetchImpl = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -22,14 +22,17 @@ function fakeServer(failPut = false) {
     if (u === "/api/admin/roster/scores" && init?.method === "PUT") {
       const body = JSON.parse(String(init.body));
       puts.push(body);
-      if (failPut) return new Response(null, { status: 503 });
+      if (putStatus) return new Response(null, { status: putStatus });
       const r = rows.find((x) => x.week_id === body.week_id && x.student_id === body.student_id)!;
+      const now = r.clinic_attend ?? null;
+      if ("clinic_attend" in body.after && now !== body.before.clinic_attend && now !== body.after.clinic_attend)
+        return Response.json({ error: "changed_elsewhere", current: { clinic_attend: now } }, { status: 409 });
       Object.assign(r, body.after);
       return new Response(null, { status: 204 });
     }
     return new Response(null, { status: 404 });
   });
-  return { fetchImpl, puts };
+  return { fetchImpl, puts, rows };
 }
 
 it("shows the clinic schedule and saves the attendance circle", async () => {
@@ -55,12 +58,45 @@ it("shows the clinic schedule and saves the attendance circle", async () => {
 });
 
 it("reverts the attendance circle when the save fails", async () => {
-  const { fetchImpl } = fakeServer(true);
+  const { fetchImpl } = fakeServer(503);
   render(<ClinicLive fetchImpl={fetchImpl} />);
   const circle = await screen.findByLabelText("일번 클리닉 출석");
   fireEvent.click(circle);
-  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "출석 표시를 저장하지 못했어요. 다시 눌러주세요.");
+  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "서버에 저장하지 못했습니다. 잠시 후 다시 시도하세요.");
   expect(screen.getByLabelText("일번 클리닉 출석").getAttribute("aria-pressed")).toBe("false");
+});
+
+it("sends a null attendance as read so the save is not refused", async () => {
+  const { fetchImpl, puts, rows } = fakeServer();
+  rows.find((r) => r.week_id === 11 && r.student_id === 1)!.clinic_attend = null;
+  render(<ClinicLive fetchImpl={fetchImpl} />);
+  fireEvent.click(await screen.findByLabelText("일번 클리닉 출석"));
+  await waitFor(() => expect(puts).toHaveLength(1));
+  expect(puts[0]).toMatchObject({ before: { clinic_attend: null }, after: { clinic_attend: true } });
+  await waitFor(() => expect(screen.getByLabelText("일번 클리닉 출석").getAttribute("aria-pressed")).toBe("true"));
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("shows the value saved elsewhere when the save conflicts", async () => {
+  const { fetchImpl, puts, rows } = fakeServer();
+  render(<ClinicLive fetchImpl={fetchImpl} />);
+  const circle = await screen.findByLabelText("일번 클리닉 출석");
+  rows.find((r) => r.week_id === 11 && r.student_id === 1)!.clinic_attend = null;
+  fireEvent.click(circle);
+  expect((await screen.findByRole("alert")).textContent).toMatch(/다른 곳에서 먼저 수정됐습니다/);
+  expect(screen.getByLabelText("일번 클리닉 출석").getAttribute("aria-pressed")).toBe("false");
+  fireEvent.click(screen.getByLabelText("일번 클리닉 출석"));
+  await waitFor(() => expect(puts).toHaveLength(2));
+  expect(puts[1]).toMatchObject({ before: { clinic_attend: null }, after: { clinic_attend: true } });
+  await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+});
+
+it("returns to the login form when the session expired", async () => {
+  const { fetchImpl } = fakeServer(401);
+  render(<ClinicLive fetchImpl={fetchImpl} />);
+  fireEvent.click(await screen.findByLabelText("일번 클리닉 출석"));
+  expect(await screen.findByLabelText("관리자 비밀번호")).toBeTruthy();
+  expect(screen.getByRole("alert").textContent).toMatch(/로그인이 만료됐습니다/);
 });
 
 it("lists uncertified students and saves only changed homework cells that have a score row", async () => {

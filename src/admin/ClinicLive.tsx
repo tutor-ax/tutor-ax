@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { AdminApi } from "../adminApi";
+import { AdminConflict, type AdminApi } from "../adminApi";
 import {
   buildClinicSchedule,
   clinicColLabel,
@@ -28,13 +28,12 @@ async function loadSchedule(api: AdminApi): Promise<Schedule> {
   return buildClinicSchedule(classes, recent, roster.flat(), rows.flat());
 }
 
-// 실제 DB 클리닉 배정표. score-system처럼 클리닉 메모에서 요일·시간을 읽어 배치하고, 이름 앞 ✓로 출석을 바로 저장한다.
 export default function ClinicLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
   const [sched, setSched] = useState<Schedule | null>(null);
   const [refs, setRefs] = useState<Record<string, ClinicRef>>({});
   const [grade, setGrade] = useState("전체");
   const pending = useRef(new Set<string>());
-  const { api, signedIn, busy, error, setError, run, login } = useLivePanel(fetchImpl, {
+  const { api, signedIn, busy, error, run, login } = useLivePanel(fetchImpl, {
     onSignedIn: async (a) => {
       const s = await loadSchedule(a);
       setSched(s);
@@ -51,34 +50,36 @@ export default function ClinicLive({ fetchImpl }: { fetchImpl?: typeof fetch }) 
       if (grade !== "전체" && !s.grades.includes(grade)) setGrade("전체");
     });
 
-  const toggle = async (sid: string) => {
+  const toggle = (sid: string) => {
     const r = refs[sid];
     if (!r || pending.current.has(sid)) return;
     pending.current.add(sid);
     const want = !r.attend;
     setRefs((m) => ({ ...m, [sid]: { ...r, attend: want } })); // 화면은 바로 바꾸고, 저장이 실패하면 되돌린다
-    try {
-      await api.saveScore({
-        week_id: r.weekId,
-        student_id: r.studentId,
-        items: r.items,
-        no_homework: false,
-        before: { clinic_attend: r.attend },
-        after: { clinic_attend: want },
-      });
-    } catch {
-      setRefs((m) => ({ ...m, [sid]: { ...r } }));
-      setError("출석 표시를 저장하지 못했어요. 다시 눌러주세요.");
-    } finally {
-      pending.current.delete(sid);
-    }
+    // before는 읽어 온 값 그대로(null 포함) 보내야 서버의 덮어쓰기 검사를 통과한다.
+    void run(async () => {
+      try {
+        await api.saveScore({
+          week_id: r.weekId,
+          student_id: r.studentId,
+          items: r.items,
+          no_homework: false,
+          before: { clinic_attend: r.attend },
+          after: { clinic_attend: want },
+        });
+      } catch (e) {
+        const now = e instanceof AdminConflict && "clinic_attend" in e.current ? (e.current.clinic_attend as boolean | null) : r.attend;
+        setRefs((m) => ({ ...m, [sid]: { ...r, attend: now } }));
+        throw e;
+      }
+    }).finally(() => pending.current.delete(sid));
   };
 
   if (!signedIn) return login("실제 DB 클리닉 배정표");
 
   const on = (sid: string) => !!refs[sid]?.attend;
   const att = (sid: string, name: string) => (
-    <button type="button" className={`clinic-att${on(sid) ? " on" : ""}`} aria-pressed={on(sid)} aria-label={`${name} 클리닉 출석`} onClick={() => void toggle(sid)}>
+    <button type="button" className={`clinic-att${on(sid) ? " on" : ""}`} aria-pressed={on(sid)} aria-label={`${name} 클리닉 출석`} onClick={() => toggle(sid)}>
       ✓
     </button>
   );
