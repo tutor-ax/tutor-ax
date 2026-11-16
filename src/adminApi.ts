@@ -1,5 +1,5 @@
 // 관리자 읽기 전용 API(backend/ Spring Boot). 로그인하면 HttpOnly 쿠키(admin_session)로 확인한다 — 비밀번호를 들고 다니지 않는다.
-import type { Item, Period } from "./domain";
+import type { Item, Period, ScoreRow } from "./domain";
 import type { CounselRow } from "./counsel";
 
 export const ADMIN_API_PATH = "/api/admin";
@@ -68,6 +68,7 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     body: JSON.stringify(body),
   });
   const send = (method: string, body: unknown): RequestInit => ({ ...json(body), method });
+  const asWeek = (e: AdminWeek): AdminWeek => ({ ...e, test_date: e.exam_date });
   return {
     rosterClasses: () => list<RosterClass[]>("/roster/classes"),
     rosterStudents: (classId: number) => list<RosterStudent[]>(`/roster/students?classId=${classId}`),
@@ -90,6 +91,19 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
       void (await call(`/roster/weeks/${weekId}/item-config`, send("PUT", c))),
     saveGroup: async (weekId: number, weekIds: number[], before: Record<number, string | null>) =>
       void (await call(`/roster/weeks/${weekId}/group`, send("PUT", { week_ids: weekIds, before }))),
+    // 모의고사(이전 5단계). 주차 도구(정렬·비교 그룹 선택)를 그대로 쓰도록 exam_date를 test_date로도 둔다.
+    mockExams: async (classId: number) => (await list<AdminWeek[]>(`/classes/${classId}/mock-exams`)).map(asWeek),
+    allMockExams: async () => (await list<AdminWeek[]>("/roster/mock-exams")).map(asWeek),
+    mockScores: (examIds: number[]) => list<ScoreRow[]>(`/mock-scores?examIds=${examIds.join(",")}`),
+    addMockExams: async (date: string, label: string, classIds: number[]) =>
+      void (await call("/roster/mock-exams", json({ date, label, class_ids: classIds }))),
+    // 학생 한 명의 바뀐 칸만. 칸 이름: score:<항목>, retest:<항목>, memo, absent(미응시).
+    saveMockScore: async (s: { exam_id: number; student_id: number; items: string[]; before: object; after: object }) =>
+      void (await call("/roster/mock-scores", send("PUT", s))),
+    saveMockItemConfig: async (examId: number, c: { before: unknown; group_id: string | null; cut_all: boolean; items: Item[] }) =>
+      void (await call(`/roster/mock-exams/${examId}/item-config`, send("PUT", c))),
+    saveMockGroup: async (examId: number, examIds: number[], before: Record<number, string | null>) =>
+      void (await call(`/roster/mock-exams/${examId}/group`, send("PUT", { week_ids: examIds, before }))),
     // 다른 반 학생 입력·반 이동. 주차 짝짓기는 화면(weekMatch.ts)이 하고, 서버는 그 계획을 검사해 한 번에 적용한다.
     searchStudents: (q: string) => list<{ id: number; name: string; class_id: number }[]>(`/roster/students/search?q=${encodeURIComponent(q)}`),
     scoreWeeks: (studentId: number) => list<number[]>(`/roster/students/${studentId}/score-weeks`),
