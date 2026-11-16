@@ -7,6 +7,7 @@ import ScoreLive from "./ScoreLive";
 import MockLive from "./MockLive";
 import ClinicLive from "./ClinicLive";
 import UncertLive from "./UncertLive";
+import SmsLive from "./SmsLive";
 import HistoryLive from "./HistoryLive";
 
 type Student = { id: string; name: string };
@@ -277,7 +278,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
           "조교 메모",
           "클리닉 배정표",
           "상담 준비",
-          "문자 미리보기",
+          "문자 발송",
           "변경 이력",
           "주차 관리",
           "학생 관리",
@@ -1218,7 +1219,8 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
               <CounselLive />
             </>
           )}
-          {tab === "문자 미리보기" && (
+          {tab === "문자 발송" && <SmsLive />}
+          {tab === "문자 발송" && (
             <>
               <p className="demo-warning">미리보기 전용 · 실제 발송 불가</p>
               <p>연락처를 수집하지 않으며 메시지를 전송하지 않습니다.</p>

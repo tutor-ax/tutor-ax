@@ -33,6 +33,11 @@ export interface RosterStudent {
   is_active: boolean;
 }
 
+// 문자: 번호는 서버가 학생 id로 찾는다. key가 같은 문자는 서버가 두 번 보내지 않는다(재시도 안전).
+export interface SmsMessage { studentId: number; recipient: "parent" | "student"; text: string; key: string }
+export interface SmsResult { studentId: number; recipient: string; to: string; ok: boolean; msg: string }
+export interface SmsResponse { success: number; fail: number; dryRun?: number; duplicate?: number; results: SmsResult[] }
+
 /** 옮길 점수 행 하나: 기존 주차로(to_week_id), 새 주차로(new_label), 둘 다 없으면 옮기지 않음. */
 export interface MovePlan { from_week_id: number; to_week_id?: number; new_label?: string }
 
@@ -115,6 +120,8 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     // before = 화면이 읽어 온 값. 서버는 그 값이 그대로일 때만 바꾼다(덮어쓰기 방지).
     patch: async (kind: "classes" | "students", id: number, before: object, after: object) =>
       void (await call(`/roster/${kind}/${id}`, send("PATCH", { before, after }))),
+    // 300건을 8개씩 보내면 20초 남짓 걸릴 수 있어 Lambda 시간 제한(30초)에 맞춘다.
+    sendSms: async (messages: SmsMessage[]) => (await (await call("/sms", json({ messages }), 30000)).json()) as SmsResponse,
     login: async (password: string) => void (await call("/session", json({ password }))),
     logout: async () => void (await call("/session", { method: "DELETE" })),
     classes: () => list<AdminClass[]>("/classes"),
