@@ -4,6 +4,7 @@ import { counselBrief, counselCard, type CounselRow } from "../counsel";
 import CounselLive from "./CounselLive";
 import RosterLive from "./RosterLive";
 import ScoreLive from "./ScoreLive";
+import MockLive from "./MockLive";
 import ClinicLive from "./ClinicLive";
 import UncertLive from "./UncertLive";
 
@@ -428,6 +429,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
           )}
           {tab === "주차 관리" && <RosterLive mode="weeks" />}
           {tab === "점수 입력" && <ScoreLive />}
+          {mock && <MockLive />}
           {tab === "출석·미인증" && <UncertLive />}
           {tab === "출석·미인증" && current && (
             <>

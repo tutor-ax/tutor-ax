@@ -1,5 +1,5 @@
 import type { AdminWeek } from "./adminApi";
-import { itemVal, normalizeItemConfig, type Item, type ScoreRow } from "./domain";
+import { DEFAULT_ITEMS, itemVal, normalizeItemConfig, type Item, type ScoreRow } from "./domain";
 
 export const weekLabel = (w: AdminWeek) => w.label || w.test_date || "";
 
@@ -17,26 +17,33 @@ const sig = (items: Item[]) =>
     .map((i) => `${i.key}:${i.max}`)
     .join("|");
 
-// 학부모 화면과 같은 기준: 그룹 주차 전체의 점수를 이번 주차 항목 설정으로 합산한다.
-export function groupStats(groupWeeks: AdminWeek[], rows: ScoreRow[], cfg: Item[], nameOf: (w: AdminWeek) => string) {
+const itemSum = (r: ScoreRow, items: Item[]) => {
+  const vals = items.map((i) => itemVal(r, i.key)).filter((v) => v != null && v !== "");
+  return vals.length ? vals.reduce<number>((a, v) => a + parseFloat(String(v)), 0) : null;
+};
+
+// 학부모 화면과 같은 기준: 그룹 주차 전체의 점수를 이번 주차 항목 설정으로 합산한다. 모의고사는 기본 항목과 합계(mockTotal)만 다르다.
+export function groupStats(
+  groupWeeks: AdminWeek[],
+  rows: ScoreRow[],
+  cfg: Item[],
+  nameOf: (w: AdminWeek) => string,
+  defaults = DEFAULT_ITEMS,
+  totalOf = itemSum,
+) {
   const items = cfg.filter((i) => i.active);
-  const totals = rows
-    .map((r) => {
-      const vals = items.map((i) => itemVal(r, i.key)).filter((v) => v != null && v !== "");
-      return vals.length ? vals.reduce<number>((a, v) => a + parseFloat(String(v)), 0) : null;
-    })
-    .filter((v): v is number => v !== null);
+  const totals = rows.map((r) => totalOf(r, items)).filter((v): v is number => v !== null);
   const mine = sig(cfg);
   const keys = items.map((i) => i.key);
   const cuts = groupWeeks.map((w) => {
-    const cut = Object.fromEntries(normalizeItemConfig(w.item_config).map((i) => [i.key, i.cut]));
+    const cut = Object.fromEntries(normalizeItemConfig(w.item_config, defaults).map((i) => [i.key, i.cut]));
     return { name: nameOf(w), sig: keys.map((k) => cut[k] ?? "–").join("/"), text: items.map((i) => `${i.label || i.key} ${cut[i.key] ?? "–"}`).join(", ") };
   });
   return {
     avg: totals.length ? (totals.reduce((a, b) => a + b, 0) / totals.length).toFixed(1) : null,
     count: totals.length,
     totalMax: items.reduce((a, i) => a + (i.max ?? 0), 0),
-    mismatched: groupWeeks.filter((w) => sig(normalizeItemConfig(w.item_config)) !== mine).map(nameOf),
+    mismatched: groupWeeks.filter((w) => sig(normalizeItemConfig(w.item_config, defaults)) !== mine).map(nameOf),
     // 반마다 커트가 다를 때만 반별로 보여준다.
     cutLines: groupWeeks.length > 1 && new Set(cuts.map((c) => c.sig)).size > 1 ? cuts.map((c) => `${c.name} ${c.text}`) : [],
   };

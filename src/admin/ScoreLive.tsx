@@ -3,15 +3,13 @@ import { AdminConflict, type AdminWeek, type RosterClass, type RosterStudent } f
 import { activeItems, isBelowCut, normalizeItemConfig, type Item, type ScoreRow } from "../domain";
 import { changedFields, fieldsOf, overMax, payloadValue, SCALAR_LABELS, total, withCarry, type Fields, type SheetRow } from "../scoreSheet";
 import { sortByTestDate } from "../weekDates";
-import { groupPicks, groupStats, movedFrom, nextItemKey, weekLabel } from "../weekGroup";
+import { groupStats } from "../weekGroup";
+import GroupEditor from "./GroupEditor";
 import GuestInput from "./GuestInput";
+import ItemConfigEditor, { cfgError, fromRows, toRows, type CfgRow } from "./ItemConfigEditor";
 import { useLivePanel } from "./useLivePanel";
 
-type CfgRow = { key: string; label: string; max: string; cut: string; active: boolean };
 const BASE_KEYS = ["word_score", "reading_score", "mc_score", "item4_score"];
-const toRows = (its: Item[]): CfgRow[] => its.map((i) => ({ ...i, max: i.max == null ? "" : String(i.max), cut: i.cut == null ? "" : String(i.cut) }));
-const num = (s: string) => (s.trim() === "" ? null : parseFloat(s));
-const fromRows = (rows: CfgRow[]): Item[] => rows.map((r) => ({ ...r, label: r.label.trim(), max: num(r.max), cut: num(r.cut) }));
 const filled = (v: unknown) => v != null && String(v).trim() !== "";
 
 // 이전 주차 과제 값 이어오기에 쓰는 최대 주차 수(서버 점수 조회 한도 24 - 이번 주차).
@@ -33,7 +31,6 @@ export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
   const [cfg, setCfg] = useState<CfgRow[]>([]);
   const [cutAll, setCutAll] = useState(false);
   const [group, setGroup] = useState<{ all: AdminWeek[]; weeks: AdminWeek[]; rows: ScoreRow[] } | "error" | null>(null);
-  const [picks, setPicks] = useState<Record<number, { on: boolean; weekId: number }> | null>(null);
   const base = useRef<Record<number, Fields>>({});
   const screen = useRef<Record<number, Fields>>({});
   const chains = useRef<Record<number, Promise<void>>>({});
@@ -89,7 +86,6 @@ export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
     setMemo(week.memo ?? "");
     setNoHomework(noHw);
     setCfg(toRows(normalizeItemConfig(week.item_config)));
-    setPicks(null);
     setStatus({});
     setStudents(active);
     void refreshGroup(week, seq);
@@ -151,14 +147,11 @@ export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
     }, want ? "이번 주 과제 없음으로 저장했습니다." : "과제 없음을 해제했습니다.");
   };
 
-  const editCfg = (key: string, patch: Partial<CfgRow>) => setCfg((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
-
   const saveItemConfig = () => {
     if (!week) return;
     const its = fromRows(cfg);
-    if (!its.some((i) => i.active)) return setError("최소 한 개 항목은 사용해야 합니다.");
-    const noName = its.flatMap((i, n) => (i.active && !i.label ? [`${n + 1}번째`] : []));
-    if (noName.length) return setError(`${noName.join(", ")} 항목의 이름을 입력하세요.`);
+    const invalid = cfgError(its);
+    if (invalid) return setError(invalid);
     const n = group && group !== "error" ? group.weeks.length : 1;
     void tool(
       async () => {
@@ -175,28 +168,6 @@ export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
   };
 
   const nameOf = (w: AdminWeek) => classes.find((c) => c.id === w.class_id)?.name ?? `반 #${w.class_id}`;
-  const all = group && group !== "error" ? group.all : [];
-  const byClass = new Map(classes.map((c) => [c.id, sortByTestDate(all.filter((w) => w.class_id === c.id))]));
-  // 편집 중인 주차가 맨 앞, 나머지는 반 순서대로.
-  const picked = picks
-    ? [Number(weekId), ...classes.filter((c) => c.id !== Number(classId) && picks[c.id]?.on).map((c) => picks[c.id].weekId)]
-    : [];
-  const pickedWeeks = picked.map((id) => all.find((w) => w.id === id)).filter((w): w is AdminWeek => !!w);
-  const moved = picks && week ? movedFrom(all, picked, week.group_id).map((m) => `${nameOf(m.week)}(현재 다른 그룹 ${m.size}개 반)`) : [];
-
-  const saveGroup = () => {
-    if (!week) return;
-    const names = pickedWeeks.map((w) => ` · ${nameOf(w)} ${weekLabel(w)}`).join("\n");
-    const out = moved.length ? `\n⚠️ ${moved.join(", ")}은(는) 기존 비교 그룹에서 빠집니다.\n` : "";
-    const msg = `이 주차의 비교 그룹을 ${picked.length}개 반으로 설정합니다.\n${names}\n\n이 반들은 같은 평균·석차를 공유합니다.\n포함된 모든 반의 학부모가 합산된 평균을 보게 됩니다.\n${out}\n계속할까요?`;
-    if (!confirm(msg)) return;
-    const before = Object.fromEntries(picked.map((id) => [id, all.find((w) => w.id === id)?.group_id ?? null]));
-    void tool(async () => {
-      await api.saveGroup(week.id, picked, before);
-      await load(weekId);
-    }, `비교 그룹이 ${picked.length}개 반으로 설정됐습니다.`);
-  };
-
   const saveNow = async (sid: number): Promise<void> => {
     const b = base.current[sid];
     const sc = { ...screen.current[sid] };
@@ -246,19 +217,9 @@ export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
     setTick((t) => t + 1);
   };
 
-  const openGroupEdit = () =>
-    void run(async () => {
-      if (!week) return;
-      const fresh = await api.allWeeks();
-      setGroup((g) => (g && g !== "error" ? { ...g, all: fresh } : { all: fresh, weeks: [], rows: [] }));
-      const map = new Map(classes.map((c) => [c.id, sortByTestDate(fresh.filter((w) => w.class_id === c.id))]));
-      setPicks(groupPicks(map, fresh.find((w) => w.id === week.id) ?? week, Number(classId)));
-    });
-
   if (!signedIn) return login("실제 DB 점수 입력");
 
   const str = (v: unknown) => (v == null ? "" : String(v));
-  const cfgActive = cfg.filter((r) => r.active);
   const stats =
     group && group !== "error" && week && group.weeks.length
       ? groupStats(group.weeks, group.rows, normalizeItemConfig(week.item_config), nameOf)
@@ -273,56 +234,7 @@ export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
         <input type="checkbox" checked={noHomework} disabled={busy} onChange={(e) => toggleNoHomework(e.target.checked)} />
         이번 주 과제 없음
       </label>
-      <details open>
-        <summary>이번 주 채점 항목 설정 (항목명·만점·커트라인)</summary>
-        <table aria-label="항목 설정">
-          <thead>
-            <tr>
-              <th>사용</th>
-              <th>항목 이름</th>
-              <th>만점</th>
-              <th>커트라인</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {cfg.map((r, n) => (
-              <tr key={r.key}>
-                <td>
-                  <input type="checkbox" aria-label={`${n + 1}번째 항목 사용`} checked={r.active} onChange={(e) => editCfg(r.key, { active: e.target.checked })} />
-                </td>
-                <td>
-                  <input aria-label={`${n + 1}번째 항목 이름`} placeholder={`${n + 1}번째 항목 이름 (예: 단어)`} value={r.label} onChange={(e) => editCfg(r.key, { label: e.target.value })} />
-                </td>
-                <td>
-                  <input type="number" min={0} aria-label={`${n + 1}번째 항목 만점`} value={r.max} onChange={(e) => editCfg(r.key, { max: e.target.value })} />
-                </td>
-                <td>
-                  <input type="number" min={0} aria-label={`${n + 1}번째 항목 커트라인`} value={r.cut} onChange={(e) => editCfg(r.key, { cut: e.target.value })} />
-                </td>
-                <td>
-                  {/* 기본 4칸은 DB 열과 1:1이라 끌 수만 있다 */}
-                  {!BASE_KEYS.includes(r.key) && (
-                    <button type="button" aria-label={`${n + 1}번째 항목 삭제`} onClick={() => setCfg((rows) => rows.filter((x) => x.key !== r.key))}>
-                      ×
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <button type="button" onClick={() => setCfg((rows) => [...rows, { key: nextItemKey(rows), label: "", max: "", cut: "", active: true }])}>
-          + 항목 추가
-        </button>
-        <p>항목을 삭제해도 이미 저장된 점수는 지워지지 않아요. 같은 항목을 다시 추가하면 그대로 되살아납니다.</p>
-        <button type="button" disabled={busy} onClick={saveItemConfig}>
-          항목 설정 저장
-        </button>
-      </details>
-      <p>
-        사용 항목 {cfgActive.length}개 · 총점 만점 {cfgActive.reduce((a, r) => a + (num(r.max) || 0), 0)}점
-      </p>
+      <ItemConfigEditor title="이번 주 채점 항목 설정 (항목명·만점·커트라인)" example="단어" baseKeys={BASE_KEYS} cfg={cfg} setCfg={setCfg} busy={busy} onSave={saveItemConfig} />
       {week.group_id && group && group !== "error" && group.weeks.length > 1 && (
         <label>
           <input type="checkbox" checked={cutAll} onChange={(e) => setCutAll(e.target.checked)} />
@@ -346,64 +258,20 @@ export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
           )}
         </div>
       )}
-      {!picks ? (
-        <button type="button" disabled={busy} onClick={openGroupEdit}>
-          비교 그룹 수정
-        </button>
-      ) : (
-        <fieldset aria-label="비교 그룹 수정">
-          <legend>이 주차의 평균을 함께 낼 반 선택 — 체크한 반들이 하나의 비교 그룹이 됩니다</legend>
-          {classes.map((c) => {
-            const ofClass = byClass.get(c.id) ?? [];
-            const p = picks[c.id];
-            const cur = c.id === Number(classId);
-            if (!ofClass.length || !p)
-              return (
-                <label key={c.id}>
-                  <input type="checkbox" disabled />
-                  {c.name} 주차 없음
-                </label>
-              );
-            return (
-              <div key={c.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={p.on}
-                    disabled={cur}
-                    onChange={(e) => setPicks({ ...picks, [c.id]: { ...p, on: e.target.checked } })}
-                  />
-                  {c.name}
-                  {cur && " (현재)"}
-                </label>
-                <select
-                  aria-label={`${c.name} 주차`}
-                  value={p.weekId}
-                  disabled={cur}
-                  onChange={(e) => setPicks({ ...picks, [c.id]: { ...p, weekId: Number(e.target.value) } })}
-                >
-                  {ofClass.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {weekLabel(w) || `#${w.id}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            );
-          })}
-          <p>
-            비교 그룹 {picked.length}개 반 — {pickedWeeks.map((w) => `${nameOf(w)} ${weekLabel(w)}`).join(" · ")}
-          </p>
-          <p>이 반들은 같은 평균·석차를 공유합니다. 포함된 모든 반의 학부모가 합산된 평균을 보게 됩니다.</p>
-          {moved.length > 0 && <p>⚠️ {moved.join(", ")}은 기존 그룹에서 빠져 이 그룹으로 옮겨집니다.</p>}
-          <button type="button" disabled={busy} onClick={saveGroup}>
-            비교 그룹 저장
-          </button>
-          <button type="button" onClick={() => setPicks(null)}>
-            취소
-          </button>
-        </fieldset>
-      )}
+      <GroupEditor
+        key={week.id}
+        unit="주차"
+        classes={classes}
+        classId={Number(classId)}
+        current={week}
+        busy={busy}
+        run={tool}
+        fetchAll={api.allWeeks}
+        save={async (ids, before) => {
+          await api.saveGroup(week.id, ids, before);
+          await load(weekId);
+        }}
+      />
     </>
   );
   return (

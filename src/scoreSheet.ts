@@ -8,7 +8,14 @@ export interface SheetRow extends ScoreRow {
   homework_eval?: string | null;
 }
 
-export const SCALAR_LABELS: Record<string, string> = { attendance: "출석", homework_rate: "과제%", homework_eval: "과제평가", clinic_memo: "클리닉메모" };
+export const SCALAR_LABELS: Record<string, string> = {
+  attendance: "출석",
+  homework_rate: "과제%",
+  homework_eval: "과제평가",
+  clinic_memo: "클리닉메모",
+  memo: "메모",
+  absent: "미응시",
+};
 
 export const blank = (v: unknown) => v === undefined || v === null || (typeof v === "string" && v.trim() === "");
 const numeric = (v: unknown) => typeof v === "number" || /^\s*-?\d+(\.\d+)?\s*$/.test(String(v));
@@ -34,6 +41,20 @@ export function fieldsOf(row: SheetRow | undefined, items: Item[]): Fields {
     // 재시험 통과는 커트 미달 칸에만 보이므로, 커트를 넘긴 칸의 옛 표시는 없는 것으로 본다.
     f[`retest:${it.key}`] = row?.retest_pass?.[it.key] === true && isBelowCut(f[`score:${it.key}`] as number, it.cut);
   }
+  return f;
+}
+
+const MOCK_KEYS = ["item1_score", "item2_score", "item3_score", "item4_score"];
+
+// score-system renderMockInputs. 항목 값 없이 score만 있는 옛 줄은 첫 항목 칸에 보여 준다(저장하면 서버가 그 칸으로 옮긴다).
+export function mockFieldsOf(row: ScoreRow | undefined, items: Item[]): Fields {
+  const f: Fields = { absent: row?.absent === true, memo: row?.memo ?? null };
+  const legacy = row && [...MOCK_KEYS, ...items.map((i) => i.key)].every((k) => blank(itemVal(row, k))) ? row.score : null;
+  items.forEach((it, idx) => {
+    const v = itemVal(row, it.key) ?? (idx === 0 ? legacy : null);
+    f[`score:${it.key}`] = blank(v) ? null : parseFloat(String(v));
+    f[`retest:${it.key}`] = row?.retest_pass?.[it.key] === true && isBelowCut(f[`score:${it.key}`] as number, it.cut);
+  });
   return f;
 }
 
