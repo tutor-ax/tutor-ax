@@ -27,7 +27,7 @@ it("keeps weekly scores isolated with configurable items and original retest sco
     screen.queryByLabelText("가상 학생 A 가상 평가 점수"),
   ).not.toBeInTheDocument();
 });
-it("edits weekly clinic plans and previews SMS without making network requests", () => {
+it("edits weekly clinic plans and previews SMS without sending or saving anything", () => {
   const network = vi.spyOn(globalThis, "fetch");
   render(<Admin />);
   click("클리닉 배정표");
@@ -44,7 +44,8 @@ it("edits weekly clinic plans and previews SMS without making network requests",
   expect(
     screen.getByText("미리보기 전용 · 실제 발송 불가"),
   ).toBeInTheDocument();
-  expect(network).not.toHaveBeenCalled();
+  // The live score panel on the first tab only checks the admin session (GET); the demo never writes or sends.
+  expect(network.mock.calls.filter(([, init]) => (init?.method ?? "GET") !== "GET")).toEqual([]);
   network.mockRestore();
 });
 it("persists snapshots, restores history and resets only its own storage", () => {

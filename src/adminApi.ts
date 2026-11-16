@@ -11,7 +11,12 @@ export class AdminUnauthorized extends Error {}
 export class AdminLocked extends Error {}
 export class AdminUnavailable extends Error {}
 /** 409: someone saved this row elsewhere (score-system or another tab) after we read it. Reload, then edit again. */
-export class AdminConflict extends Error {}
+export class AdminConflict extends Error {
+  /** Score saves only: the fields someone else changed, with their saved values. */
+  constructor(readonly current: Record<string, unknown> = {}) {
+    super("changed_elsewhere");
+  }
+}
 /** 400: the server rejected a value (e.g. PIN over 4 digits, unknown day). */
 export class AdminInvalid extends Error {}
 
@@ -41,7 +46,10 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     }
     if (res.status === 401) throw new AdminUnauthorized();
     if (res.status === 429) throw new AdminLocked();
-    if (res.status === 409) throw new AdminConflict();
+    if (res.status === 409) {
+      const body = (await res.json().catch(() => null)) as { current?: Record<string, unknown> } | null;
+      throw new AdminConflict(body?.current ?? {});
+    }
     if (res.status === 400) throw new AdminInvalid();
     if (!res.ok) throw new AdminUnavailable(`status ${res.status}`);
     return res;
@@ -66,6 +74,9 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     // 체크한 반들을 한 비교 그룹으로 한 번에 추가한다. 서버는 전부 넣거나 하나도 넣지 않는다.
     addWeeks: async (base: string, weeks: { class_id: number; test_date: string }[]) =>
       void (await call("/roster/weeks", json({ base, weeks }))),
+    // 학생 한 명의 바뀐 칸만. 칸 이름: score:<항목>, retest:<항목>, homework_rate·homework_eval·attendance·clinic_memo.
+    saveScore: async (s: { week_id: number; student_id: number; items: string[]; before: object; after: object }) =>
+      void (await call("/roster/scores", send("PUT", s))),
     // before = 화면이 읽어 온 값. 서버는 그 값이 그대로일 때만 바꾼다(덮어쓰기 방지).
     patch: async (kind: "classes" | "students", id: number, before: object, after: object) =>
       void (await call(`/roster/${kind}/${id}`, send("PATCH", { before, after }))),

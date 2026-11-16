@@ -1,14 +1,6 @@
-import { useEffect, useState } from "react";
-import {
-  AdminConflict,
-  AdminInvalid,
-  AdminLocked,
-  AdminUnauthorized,
-  createAdminApi,
-  type AdminWeek,
-  type RosterClass,
-  type RosterStudent,
-} from "../adminApi";
+import { useState } from "react";
+import type { AdminWeek, RosterClass, RosterStudent } from "../adminApi";
+import { useLivePanel } from "./useLivePanel";
 import { dateForDay, fmtMD, resolveBaseDate, sortByTestDate } from "../weekDates";
 
 const GRADES = ["", "고1", "고2"];
@@ -18,9 +10,6 @@ const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
 // 칸에서 벗어나면 저장한다. 삭제는 없다(퇴원으로 대신). 반 이동은 점수까지 옮겨야 해서 3단계에서 붙인다.
 // 주차는 추가만 한다. 주차 삭제는 점수까지 지우므로 score-system에 남긴다.
 export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "students" | "weeks"; fetchImpl?: typeof fetch }) {
-  const [api] = useState(() => createAdminApi(fetchImpl));
-  const [signedIn, setSignedIn] = useState(false);
-  const [password, setPassword] = useState("");
   const [classes, setClasses] = useState<RosterClass[]>([]);
   const [classId, setClassId] = useState("");
   const [students, setStudents] = useState<RosterStudent[]>([]);
@@ -28,48 +17,17 @@ export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "stu
   const [picked, setPicked] = useState<number[]>([]);
   const [baseStr, setBaseStr] = useState("");
   const [draft, setDraft] = useState({ name: "", grade: "", day: "", time: "", pin: "", phone: "", student_phone: "" });
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { api, signedIn, busy, error, notice, run, login } = useLivePanel(fetchImpl, {
+    onSignedIn: async (a) => setClasses(await a.rosterClasses()),
+    onConflict: () => reload(),
+    invalidMessage: mode === "weeks" ? "날짜(예: 11.16)와 반 선택을 확인하세요." : "입력값을 확인하세요. (PIN 4자리 숫자, 연락처는 숫자와 -만)",
+  });
 
   const reload = async (cid = classId) => {
     setClasses(await api.rosterClasses());
     if (mode === "weeks") setWeeks(cid ? sortByTestDate(await api.weeks(Number(cid))) : []);
     else setStudents(cid ? await api.rosterStudents(Number(cid)) : []);
   };
-
-  // shortcut: login/session handling is a near-copy of CounselLive; extract a shared hook when a third live panel appears.
-  const run = async (task: () => Promise<void>, done = "") => {
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await task();
-      if (done) setNotice(done);
-    } catch (e) {
-      if (e instanceof AdminUnauthorized) {
-        setSignedIn(false);
-        setError("관리자 비밀번호가 맞지 않거나 로그인이 만료됐습니다.");
-      } else if (e instanceof AdminLocked) setError("로그인 실패가 많아 10분간 잠겼습니다.");
-      else if (e instanceof AdminConflict) {
-        setError("다른 곳에서 먼저 수정됐습니다. 최신 내용으로 다시 불러왔으니 확인 후 다시 입력하세요.");
-        await reload().catch(() => {});
-      } else if (e instanceof AdminInvalid) {
-        setError(mode === "weeks" ? "날짜(예: 11.16)와 반 선택을 확인하세요." : "입력값을 확인하세요. (PIN 4자리 숫자, 연락처는 숫자와 -만)");
-        await reload().catch(() => {});
-      } else setError("서버에 저장하지 못했습니다. 잠시 후 다시 시도하세요.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // 이미 로그인된 세션(쿠키)이 있으면 이어간다. 없으면(401) 조용히 로그인 화면.
-  useEffect(() => {
-    api.rosterClasses().then((list) => {
-      setClasses(list);
-      setSignedIn(true);
-    }).catch(() => {});
-  }, [api]);
 
   const save = <T extends RosterClass | RosterStudent>(kind: "classes" | "students", row: T, field: keyof T, value: unknown) => {
     if ((row[field] ?? "") === (value ?? "")) return;
@@ -91,32 +49,7 @@ export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "stu
     ? classes.filter((c) => picked.includes(c.id)).map((c) => ({ c, date: fmtMD(dateForDay(base, c.day) ?? base), fallback: !dateForDay(base, c.day) }))
     : [];
 
-  if (!signedIn)
-    return (
-      <section aria-label={mode === "weeks" ? "실제 DB 주차 관리" : "실제 DB 반·학생 관리"}>
-        <h3>실제 DB</h3>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void run(async () => {
-              await api.login(password);
-              setPassword("");
-              setClasses(await api.rosterClasses());
-              setSignedIn(true);
-            });
-          }}
-        >
-          <label>
-            관리자 비밀번호
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </label>
-          <button type="submit" disabled={busy || !password}>
-            연결
-          </button>
-        </form>
-        {error && <p role="alert">{error}</p>}
-      </section>
-    );
+  if (!signedIn) return login(mode === "weeks" ? "실제 DB 주차 관리" : "실제 DB 반·학생 관리");
 
   return (
     <section aria-label={mode === "weeks" ? "실제 DB 주차 관리" : "실제 DB 반·학생 관리"}>

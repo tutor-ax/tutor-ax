@@ -3,6 +3,7 @@ import "./admin.css";
 import { counselBrief, counselCard, type CounselRow } from "../counsel";
 import CounselLive from "./CounselLive";
 import RosterLive from "./RosterLive";
+import ScoreLive from "./ScoreLive";
 
 type Student = { id: string; name: string };
 type ClassRoom = {
@@ -419,6 +420,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
             </>
           )}
           {tab === "주차 관리" && <RosterLive mode="weeks" />}
+          {tab === "점수 입력" && <ScoreLive />}
           {tab === "출석·미인증" && current && (
             <>
               <p>
