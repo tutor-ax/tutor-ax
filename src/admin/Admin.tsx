@@ -307,6 +307,9 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
               mock ? setExamId(e.target.value) : setWeekId(e.target.value)
             }
           >
+            {classWeeks.length === 0 && (
+              <option value="">{mock ? "모의고사 없음" : "주차 없음"}</option>
+            )}
             {classWeeks.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.name}
@@ -356,7 +359,9 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
               </button>
               {memoError && <p role="alert">작성자와 내용을 입력하세요.</p>}
               <div aria-label="메모 목록">
-                {memos.length === 0 && <p>등록된 메모가 없습니다.</p>}
+                {memos.length === 0 && (
+                  <p className="empty-state">등록된 메모가 없습니다.</p>
+                )}
                 {memos.map((m) => (
                   <article className="teacher-memo" key={m.id}>
                     <h3>{m.author}</h3>
@@ -460,40 +465,45 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                           const label = `${s.name} ${w.name}`;
                           return (
                             <td key={w.id}>
-                              <label>
-                                <input
-                                  type="checkbox"
-                                  aria-label={`${label} 출석`}
-                                  checked={t.attendance}
-                                  onChange={(e) =>
-                                    edit({ ...t, attendance: e.target.checked })
-                                  }
-                                />
-                                출석
-                              </label>
-                              <label>
-                                과제 수행률
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  aria-label={`${label} 과제 수행률`}
-                                  value={t.rate}
-                                  onChange={(e) =>
-                                    edit({ ...t, rate: e.target.value })
-                                  }
-                                />
-                              </label>
-                              <label>
-                                과제 평가
-                                <textarea
-                                  aria-label={`${label} 과제 평가`}
-                                  value={t.evaluation}
-                                  onChange={(e) =>
-                                    edit({ ...t, evaluation: e.target.value })
-                                  }
-                                />
-                              </label>
+                              <div className="tracking-cell">
+                                <label>
+                                  <input
+                                    type="checkbox"
+                                    aria-label={`${label} 출석`}
+                                    checked={t.attendance}
+                                    onChange={(e) =>
+                                      edit({
+                                        ...t,
+                                        attendance: e.target.checked,
+                                      })
+                                    }
+                                  />
+                                  출석
+                                </label>
+                                <label>
+                                  과제 수행률
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    aria-label={`${label} 과제 수행률`}
+                                    value={t.rate}
+                                    onChange={(e) =>
+                                      edit({ ...t, rate: e.target.value })
+                                    }
+                                  />
+                                </label>
+                                <label>
+                                  과제 평가
+                                  <textarea
+                                    aria-label={`${label} 과제 평가`}
+                                    value={t.evaluation}
+                                    onChange={(e) =>
+                                      edit({ ...t, evaluation: e.target.value })
+                                    }
+                                  />
+                                </label>
+                              </div>
                             </td>
                           );
                         })}
@@ -503,27 +513,32 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                 </table>
               </div>
               {classWeeks.length === 0 && (
-                <p>주차 관리에서 주차를 추가하세요.</p>
+                <p className="empty-state">주차 관리에서 주차를 추가하세요.</p>
               )}
               <div aria-label="미인증 명단">
                 <h3>미인증 명단</h3>
-                <ul>
-                  {current.students
-                    .filter((s) =>
-                      classWeeks.some((w) => {
-                        const t = w.tracking?.[s.id];
-                        return (
-                          t &&
-                          (t.rate === "" ||
-                            Number(t.rate) <= 79 ||
-                            t.evaluation.trim() !== "")
-                        );
-                      }),
-                    )
-                    .map((s) => (
-                      <li key={s.id}>{s.name}</li>
-                    ))}
-                </ul>
+                {(() => {
+                  const missing = current.students.filter((s) =>
+                    classWeeks.some((w) => {
+                      const t = w.tracking?.[s.id];
+                      return (
+                        t &&
+                        (t.rate === "" ||
+                          Number(t.rate) <= 79 ||
+                          t.evaluation.trim() !== "")
+                      );
+                    }),
+                  );
+                  return missing.length ? (
+                    <ul>
+                      {missing.map((s) => (
+                        <li key={s.id}>{s.name}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="empty-state">미인증 학생이 없습니다.</p>
+                  );
+                })()}
               </div>
             </>
           )}
@@ -844,7 +859,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                 </div>
               </>
             ) : (
-              <p>
+              <p className="empty-state">
                 {mock
                   ? "모의고사를 추가하세요."
                   : "주차 관리에서 주차를 추가하세요."}
@@ -1038,7 +1053,9 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                       </section>
                     ))
                   ) : (
-                    <p>배정할 클리닉 대상이 없습니다.</p>
+                    <p className="empty-state">
+                      배정할 클리닉 대상이 없습니다.
+                    </p>
                   );
                 })()}
               </div>
@@ -1152,7 +1169,8 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                     const retest: Record<string, boolean> = {};
                     w.items.forEach((it) => {
                       const m = w.marks[st.id]?.[it.id];
-                      scores[it.id] = m && m.score !== "" ? Number(m.score) : null;
+                      scores[it.id] =
+                        m && m.score !== "" ? Number(m.score) : null;
                       if (m && m.score !== "" && Number(m.score) < it.cut)
                         retest[it.id] = m.passed;
                     });
@@ -1167,13 +1185,24 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                     };
                   }),
                 );
-                const brief = counselBrief(periods, rows, s.id, null, Date.now(), []);
+                const brief = counselBrief(
+                  periods,
+                  rows,
+                  s.id,
+                  null,
+                  Date.now(),
+                  [],
+                );
                 return (
                   <textarea
                     aria-label="상담 카드"
                     readOnly
                     rows={14}
-                    value={counselCard(`${s.name} · ${current.name}`, ws.length, brief)}
+                    value={counselCard(
+                      `${s.name} · ${current.name}`,
+                      ws.length,
+                      brief,
+                    )}
                   />
                 );
               })()}
@@ -1203,7 +1232,9 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
                 기록 저장 시점의 전체 반·주차 스냅샷을 복원합니다. 최근 20개를
                 보관합니다.
               </p>
-              {history.length === 0 && <p>저장한 기록이 없습니다.</p>}
+              {history.length === 0 && (
+                <p className="empty-state">저장한 기록이 없습니다.</p>
+              )}
               {history.map((h, n) => (
                 <div className="history-row" key={h.id}>
                   <time>{h.time}</time>
