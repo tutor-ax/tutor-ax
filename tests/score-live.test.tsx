@@ -45,7 +45,7 @@ const allWeeks = [
 ];
 
 function fakeServer(conflictOnce?: Record<string, unknown>, opts: { noHomework?: boolean; weekConflict?: boolean } = {}) {
-  const puts: { before: Record<string, unknown>; after: Record<string, unknown> }[] = [];
+  const puts: { no_homework: boolean; before: Record<string, unknown>; after: Record<string, unknown> }[] = [];
   const writes: { url: string; body: unknown }[] = [];
   const weekReads = { n: 0 };
   let conflict = conflictOnce;
@@ -81,7 +81,7 @@ function fakeServer(conflictOnce?: Record<string, unknown>, opts: { noHomework?:
       ]);
     if (u === "/api/admin/roster/scores" && init?.method === "PUT") {
       const body = JSON.parse(String(init.body));
-      puts.push({ before: body.before, after: body.after });
+      puts.push({ no_homework: body.no_homework, before: body.before, after: body.after });
       if (conflict) {
         const current = conflict;
         conflict = undefined;
@@ -113,6 +113,7 @@ it("saves only the changed cells of one student, with the carried homework, on l
   await waitFor(() => expect(screen.getByLabelText("가상 학생 저장 상태")).toHaveTextContent("저장됨"));
   expect(server.puts).toEqual([
     {
+      no_homework: false,
       before: { homework_rate: null, homework_eval: null, "score:word_score": null },
       after: { homework_rate: 80, homework_eval: "성실", "score:word_score": 21 },
     },
@@ -178,6 +179,8 @@ it("asks before no-homework clears homework%, then locks it and stops saving it"
   fireEvent.blur(word);
   await waitFor(() => expect(server.puts).toHaveLength(1));
   expect(server.puts[0].after).not.toHaveProperty("homework_rate");
+  // 이 주차는 아직 점수 줄이 없어 위 저장이 DB를 안 바꿨다. 첫 줄이 과제 없음을 가져가야 다시 열어도 남는다.
+  expect(server.puts[0].no_homework).toBe(true);
 });
 
 it("opens a no-homework week with homework% locked and nothing carried", async () => {

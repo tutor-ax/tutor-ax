@@ -210,6 +210,7 @@ export default function ScoreLive({ fetchImpl }: { fetchImpl?: typeof fetch }) {
         week_id: Number(weekId),
         student_id: sid,
         items: items.map((i) => i.key),
+        no_homework: noHomework, // 아직 줄이 없는 주차는 첫 줄이 이 값을 가져가야 과제 없음이 남는다
         before: Object.fromEntries(fields.map((k) => [k, payloadValue(k, b[k])])),
         after: Object.fromEntries(fields.map((k) => [k, payloadValue(k, sc[k])])),
       });

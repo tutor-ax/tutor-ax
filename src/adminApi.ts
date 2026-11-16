@@ -75,7 +75,7 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     addWeeks: async (base: string, weeks: { class_id: number; test_date: string }[]) =>
       void (await call("/roster/weeks", json({ base, weeks }))),
     // 학생 한 명의 바뀐 칸만. 칸 이름: score:<항목>, retest:<항목>, homework_rate·homework_eval·attendance·clinic_memo.
-    saveScore: async (s: { week_id: number; student_id: number; items: string[]; before: object; after: object }) =>
+    saveScore: async (s: { week_id: number; student_id: number; items: string[]; no_homework: boolean; before: object; after: object }) =>
       void (await call("/roster/scores", send("PUT", s))),
     // 주차 도구(점수 입력 탭). 서버가 그룹 전체를 한 번에 바꾸고, 화면이 읽은 뒤 바뀌었으면 409.
     allWeeks: () => list<AdminWeek[]>("/roster/weeks"),
