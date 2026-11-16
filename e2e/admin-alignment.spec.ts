@@ -51,3 +51,18 @@ for (const width of [390, 1440]) {
     expect(await scroll.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
   });
 }
+
+test("labelled fields and their buttons share a bottom edge", async ({ page }) => {
+  await page.goto(process.env.PAGES_BUILD === "true" ? "/tutor-ax/admin/" : "/admin/");
+  await page.getByRole("navigation", { name: "관리 메뉴" }).getByRole("button", { name: "반 관리", exact: true }).click();
+  for (const [field, button] of [["새 반 이름", "반 추가"], ["반 이름 수정", "반 수정"]]) {
+    const [f, b] = await Promise.all([
+      page.getByLabel(field, { exact: true }).boundingBox(),
+      page.getByRole("button", { name: button, exact: true }).boundingBox(),
+    ]);
+    expect(Math.abs(f!.y + f!.height - (b!.y + b!.height)), `${field} / ${button}`).toBeLessThan(2);
+  }
+  const header = page.locator(".admin-app header");
+  const [h1, sub] = await Promise.all([header.locator("h1").boundingBox(), header.locator("span").boundingBox()]);
+  expect(Math.abs(h1!.x - sub!.x)).toBeLessThan(1);
+});

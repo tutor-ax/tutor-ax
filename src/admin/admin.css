@@ -30,6 +30,8 @@
   background: #fff;
   padding: 24px max(24px, calc((100% - 1120px) / 2));
   border-bottom: 1px solid var(--admin-border);
+  /* theme.css also centers header text, which pushed the h1 off the subtitle's left edge. */
+  text-align: left;
 }
 .admin-app h1 {
   margin: 0;
@@ -59,6 +61,8 @@
     sans-serif;
   cursor: pointer;
   white-space: nowrap;
+  /* Sits on the line bottom like labels, so a button lines up with the field, not the label text. */
+  vertical-align: bottom;
 }
 .admin-app button:hover {
   background: var(--admin-soft);
@@ -112,7 +116,15 @@
   flex-direction: column;
   gap: 4px;
   font-size: 13px;
-  margin: 6px 16px 6px 0;
+  /* Bottom margin matches the button's 4px so field and button bottoms share a line. */
+  margin: 6px 16px 4px 0;
+  vertical-align: bottom;
+}
+.admin-app label:not(.retest):has(> input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
 }
 /* The add-item row aligns its field with the button on a shared baseline. */
 .admin-app .item-add {
@@ -146,6 +158,10 @@
   color: var(--admin-ink);
   font: inherit;
   caret-color: var(--admin-accent);
+}
+.admin-app div > :is(input:not([type="checkbox"]), select) {
+  vertical-align: bottom;
+  margin: 4px 4px 4px 0;
 }
 .admin-app input[type="checkbox"] {
   min-height: 20px;
