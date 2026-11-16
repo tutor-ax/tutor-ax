@@ -51,6 +51,7 @@
 .student-shell .notebook-contents span { color: var(--gray); }
 .student-shell .login-entry { border: 1px solid var(--border); padding: 32px; border-radius: 5px; }
 .student-shell .login-guidance { margin-bottom: 24px; }
+.student-shell .login-entry .card-body { padding-top: 20px; }
 .student-shell .form-group { margin-bottom: 18px; }
 .student-shell .form-group label { color: var(--navy); margin-bottom: 8px; }
 .student-shell .form-group input, .student-shell .period-select { background-color: #fff; border: 1px solid var(--border); border-radius: 5px; min-height: 44px; }
@@ -61,7 +62,7 @@
 .student-shell .score-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 36px; }
 .student-shell .score-heading p { margin-top: 8px; color: var(--gray); }
 .student-shell .score-heading .period-select { flex: 0 0 auto; max-width: 280px; }
-.student-shell .site-header .student-info { margin-left: auto; display: flex; align-items: baseline; gap: 8px; background: transparent; padding: 0; border-radius: 0; }
+.student-shell .site-header .student-info { margin: 0 0 0 auto; display: flex; align-items: baseline; gap: 8px; background: transparent; padding: 0; border-radius: 0; }
 .student-shell .student-name { font-size: 14px; color: var(--navy); margin: 0; font-weight: 550; }
 .student-shell .student-class { font-size: 13px; color: var(--gray); }
 .student-shell .student-class::before { content: "·"; margin-right: 8px; color: var(--border); }
