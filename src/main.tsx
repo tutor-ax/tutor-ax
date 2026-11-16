@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { createApiGateway } from "./gateway";
+import { createHomeworkApi } from "./photoApi";
 import "./styles/theme.css";
 import "./styles/score.css";
 import "./styles/student.css";
@@ -11,6 +12,6 @@ import "./styles/student.css";
 const gateway = createApiGateway();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App gateway={gateway} />
+    <App gateway={gateway} homework={createHomeworkApi()} />
   </StrictMode>,
 );

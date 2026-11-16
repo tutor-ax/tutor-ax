@@ -17,6 +17,8 @@ import {
 } from "./domain";
 import type { LoginData } from "./gateway";
 import { scoreChange } from "./scoreChange";
+import HomeworkPhotos from "./HomeworkPhotos";
+import type { HomeworkApi } from "./photoApi";
 
 function Card({
   title,
@@ -312,10 +314,12 @@ export default function Scores({
   data,
   onLogout,
   onStudy,
+  homework,
 }: {
   data: LoginData;
   onLogout: () => void;
   onStudy?: (target: "vocab" | "passage") => void;
+  homework?: HomeworkApi;
 }) {
   const periods = useMemo(() => {
     const weeks = sortByDateDesc(
@@ -419,6 +423,7 @@ export default function Scores({
           >
             {mock && <MockScore data={data} id={id} />}
           </div>
+          {homework && selected && !mock && <HomeworkPhotos key={id} weekId={id} api={homework} />}
         </div>
         <aside className="score-history" aria-label="학습 기록과 다음 공부">
           {clinicMemo && (

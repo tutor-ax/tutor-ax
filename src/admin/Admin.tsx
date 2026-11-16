@@ -7,6 +7,7 @@ import ScoreLive from "./ScoreLive";
 import MockLive from "./MockLive";
 import ClinicLive from "./ClinicLive";
 import UncertLive from "./UncertLive";
+import PhotoLive from "./PhotoLive";
 
 type Student = { id: string; name: string };
 type ClassRoom = {
@@ -431,6 +432,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
           {tab === "점수 입력" && <ScoreLive />}
           {mock && <MockLive />}
           {tab === "출석·미인증" && <UncertLive />}
+          {tab === "출석·미인증" && <PhotoLive />}
           {tab === "출석·미인증" && current && (
             <>
               <p>

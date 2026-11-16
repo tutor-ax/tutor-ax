@@ -1,6 +1,7 @@
 // 관리자 읽기 전용 API(backend/ Spring Boot). 로그인하면 HttpOnly 쿠키(admin_session)로 확인한다 — 비밀번호를 들고 다니지 않는다.
 import type { Item, Period, ScoreRow } from "./domain";
 import type { CounselRow } from "./counsel";
+import type { HomeworkPhoto } from "./photoApi";
 
 export const ADMIN_API_PATH = "/api/admin";
 export interface AdminClass { id: number; name: string; grade: string | null }
@@ -120,6 +121,8 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     students: (classId: number) => list<AdminStudent[]>(`/classes/${classId}/students`),
     weeks: (classId: number) => list<AdminWeek[]>(`/classes/${classId}/weeks`),
     scores: (weekIds: number[]) => list<CounselRow[]>(`/scores?weekIds=${weekIds.join(",")}`),
+    // 과제 인증 사진(신규): 한 주차의 전체 사진. url은 5분 뒤 만료되니 오래 열어 둔 화면은 다시 불러온다.
+    homeworkPhotos: (weekId: number) => list<HomeworkPhoto[]>(`/homework-photos?weekId=${weekId}`),
     // 요약 줄만 보낸다(이름·메모 원문 없음). 모델 응답이 느려 시간 제한을 길게 둔다.
     questions: async (lines: string[], weekCount: number) => {
       const data = (await (await call("/counsel/questions", json({ lines, weekCount }), 30000))
