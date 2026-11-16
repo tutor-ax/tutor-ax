@@ -7,6 +7,7 @@ import ScoreLive from "./ScoreLive";
 import MockLive from "./MockLive";
 import ClinicLive from "./ClinicLive";
 import UncertLive from "./UncertLive";
+import HistoryLive from "./HistoryLive";
 
 type Student = { id: string; name: string };
 type ClassRoom = {
@@ -1234,6 +1235,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
               />
             </>
           )}
+          {tab === "변경 이력" && <HistoryLive />}
           {tab === "변경 이력" && (
             <>
               <p>

@@ -1,6 +1,7 @@
 // 관리자 읽기 전용 API(backend/ Spring Boot). 로그인하면 HttpOnly 쿠키(admin_session)로 확인한다 — 비밀번호를 들고 다니지 않는다.
 import type { Item, Period, ScoreRow } from "./domain";
 import type { CounselRow } from "./counsel";
+import type { HistoryEntry } from "./history";
 
 export const ADMIN_API_PATH = "/api/admin";
 export interface AdminClass { id: number; name: string; grade: string | null }
@@ -78,7 +79,7 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     // 체크한 반들을 한 비교 그룹으로 한 번에 추가한다. 서버는 전부 넣거나 하나도 넣지 않는다.
     addWeeks: async (base: string, weeks: { class_id: number; test_date: string }[]) =>
       void (await call("/roster/weeks", json({ base, weeks }))),
-    // 학생 한 명의 바뀐 칸만. 칸 이름: score:<항목>, retest:<항목>, homework_rate·homework_eval·attendance·clinic_memo.
+    // 학생 한 명의 바뀐 칸만. 칸 이름: score:<항목>, retest:<항목>, homework_rate·homework_eval·attendance·clinic_memo (되돌리기만 hw_cert·no_homework도).
     saveScore: async (s: { week_id: number; student_id: number; items: string[]; no_homework: boolean; before: object; after: object }) =>
       void (await call("/roster/scores", send("PUT", s))),
     // 주차 도구(점수 입력 탭). 서버가 그룹 전체를 한 번에 바꾸고, 화면이 읽은 뒤 바뀌었으면 409.
@@ -120,6 +121,8 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     students: (classId: number) => list<AdminStudent[]>(`/classes/${classId}/students`),
     weeks: (classId: number) => list<AdminWeek[]>(`/classes/${classId}/weeks`),
     scores: (weekIds: number[]) => list<CounselRow[]>(`/scores?weekIds=${weekIds.join(",")}`),
+    // 변경 이력(이전 7단계): 한 주차 점수 줄의 바뀌기 전·후, 최신순 최대 500건. 되돌리기는 saveScore로 한다.
+    history: (weekId: number) => list<HistoryEntry[]>(`/history?weekId=${weekId}`),
     // 요약 줄만 보낸다(이름·메모 원문 없음). 모델 응답이 느려 시간 제한을 길게 둔다.
     questions: async (lines: string[], weekCount: number) => {
       const data = (await (await call("/counsel/questions", json({ lines, weekCount }), 30000))
