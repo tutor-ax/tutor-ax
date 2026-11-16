@@ -63,6 +63,9 @@ export function createAdminApi(fetchImpl: typeof fetch = fetch) {
     addClass: async (c: Omit<RosterClass, "id">) => void (await call("/roster/classes", json(c))),
     addStudent: async (s: { name: string; pin: string; class_id: number; phone: string; student_phone: string }) =>
       void (await call("/roster/students", json(s))),
+    // 체크한 반들을 한 비교 그룹으로 한 번에 추가한다. 서버는 전부 넣거나 하나도 넣지 않는다.
+    addWeeks: async (base: string, weeks: { class_id: number; test_date: string }[]) =>
+      void (await call("/roster/weeks", json({ base, weeks }))),
     // before = 화면이 읽어 온 값. 서버는 그 값이 그대로일 때만 바꾼다(덮어쓰기 방지).
     patch: async (kind: "classes" | "students", id: number, before: object, after: object) =>
       void (await call(`/roster/${kind}/${id}`, send("PATCH", { before, after }))),

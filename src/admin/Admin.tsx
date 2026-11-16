@@ -418,6 +418,7 @@ export default function Admin({ onExit }: { onExit?: () => void }) {
               </ul>
             </>
           )}
+          {tab === "주차 관리" && <RosterLive mode="weeks" />}
           {tab === "출석·미인증" && current && (
             <>
               <p>

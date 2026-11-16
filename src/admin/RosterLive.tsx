@@ -5,22 +5,28 @@ import {
   AdminLocked,
   AdminUnauthorized,
   createAdminApi,
+  type AdminWeek,
   type RosterClass,
   type RosterStudent,
 } from "../adminApi";
+import { dateForDay, fmtMD, resolveBaseDate, sortByTestDate } from "../weekDates";
 
 const GRADES = ["", "고1", "고2"];
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
 
 // 실제 DB의 반·학생 관리. score-system 반 관리·학생 관리 탭과 같은 칸을 같은 규칙으로 고친다.
 // 칸에서 벗어나면 저장한다. 삭제는 없다(퇴원으로 대신). 반 이동은 점수까지 옮겨야 해서 3단계에서 붙인다.
-export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "students"; fetchImpl?: typeof fetch }) {
+// 주차는 추가만 한다. 주차 삭제는 점수까지 지우므로 score-system에 남긴다.
+export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "students" | "weeks"; fetchImpl?: typeof fetch }) {
   const [api] = useState(() => createAdminApi(fetchImpl));
   const [signedIn, setSignedIn] = useState(false);
   const [password, setPassword] = useState("");
   const [classes, setClasses] = useState<RosterClass[]>([]);
   const [classId, setClassId] = useState("");
   const [students, setStudents] = useState<RosterStudent[]>([]);
+  const [weeks, setWeeks] = useState<AdminWeek[]>([]);
+  const [picked, setPicked] = useState<number[]>([]);
+  const [baseStr, setBaseStr] = useState("");
   const [draft, setDraft] = useState({ name: "", grade: "", day: "", time: "", pin: "", phone: "", student_phone: "" });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -28,7 +34,8 @@ export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "stu
 
   const reload = async (cid = classId) => {
     setClasses(await api.rosterClasses());
-    setStudents(cid ? await api.rosterStudents(Number(cid)) : []);
+    if (mode === "weeks") setWeeks(cid ? sortByTestDate(await api.weeks(Number(cid))) : []);
+    else setStudents(cid ? await api.rosterStudents(Number(cid)) : []);
   };
 
   // shortcut: login/session handling is a near-copy of CounselLive; extract a shared hook when a third live panel appears.
@@ -48,7 +55,7 @@ export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "stu
         setError("다른 곳에서 먼저 수정됐습니다. 최신 내용으로 다시 불러왔으니 확인 후 다시 입력하세요.");
         await reload().catch(() => {});
       } else if (e instanceof AdminInvalid) {
-        setError("입력값을 확인하세요. (PIN 4자리 숫자, 연락처는 숫자와 -만)");
+        setError(mode === "weeks" ? "날짜(예: 11.16)와 반 선택을 확인하세요." : "입력값을 확인하세요. (PIN 4자리 숫자, 연락처는 숫자와 -만)");
         await reload().catch(() => {});
       } else setError("서버에 저장하지 못했습니다. 잠시 후 다시 시도하세요.");
     } finally {
@@ -75,12 +82,18 @@ export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "stu
   const pickClass = (id: string) => {
     setClassId(id);
     setStudents([]);
-    if (id) void run(async () => setStudents(await api.rosterStudents(Number(id))));
+    setWeeks([]);
+    if (id) void run(() => reload(id));
   };
+
+  const base = baseStr.trim() ? resolveBaseDate(baseStr) : null;
+  const plan = base
+    ? classes.filter((c) => picked.includes(c.id)).map((c) => ({ c, date: fmtMD(dateForDay(base, c.day) ?? base), fallback: !dateForDay(base, c.day) }))
+    : [];
 
   if (!signedIn)
     return (
-      <section aria-label="실제 DB 반·학생 관리">
+      <section aria-label={mode === "weeks" ? "실제 DB 주차 관리" : "실제 DB 반·학생 관리"}>
         <h3>실제 DB</h3>
         <form
           onSubmit={(e) => {
@@ -106,10 +119,85 @@ export default function RosterLive({ mode, fetchImpl }: { mode: "classes" | "stu
     );
 
   return (
-    <section aria-label="실제 DB 반·학생 관리">
+    <section aria-label={mode === "weeks" ? "실제 DB 주차 관리" : "실제 DB 반·학생 관리"}>
       <h3>실제 DB</h3>
       <p>실제 학원 기록입니다. 칸에서 벗어나면 바로 저장됩니다.</p>
-      {mode === "classes" ? (
+      {mode === "weeks" ? (
+        <>
+          <fieldset>
+            <legend>평균을 함께 낼 반</legend>
+            {classes.map((c) => (
+              <label key={c.id}>
+                <input
+                  type="checkbox"
+                  checked={picked.includes(c.id)}
+                  onChange={(e) => setPicked(e.target.checked ? [...picked, c.id] : picked.filter((id) => id !== c.id))}
+                />
+                {c.name} ({c.day})
+              </label>
+            ))}
+          </fieldset>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const rows = plan.map((p) => ({ class_id: p.c.id, test_date: p.date }));
+              const summary = plan.map((p) => `${p.c.name} ${p.date}`).join(" / ");
+              void run(async () => {
+                await api.addWeeks(fmtMD(base as Date), rows);
+                setBaseStr("");
+                setPicked([]);
+                await reload();
+              }, `${rows.length}개 반 주차를 추가했습니다. ${summary}`);
+            }}
+          >
+            <label>
+              기준 날짜
+              <input placeholder="11.16" value={baseStr} onChange={(e) => setBaseStr(e.target.value)} />
+            </label>
+            <button type="submit" disabled={busy || !base || !plan.length}>
+              실제 주차 추가
+            </button>
+          </form>
+          {baseStr.trim() && !base && <p>기준 날짜를 11.16 형식으로 입력하세요.</p>}
+          {plan.length > 0 && (
+            <p aria-label="추가될 주차">
+              {plan.length}개 반이 한 비교 그룹으로 평균을 냅니다:{" "}
+              {plan.map((p) => `${p.c.name} ${p.date}${p.fallback ? "(요일 미지정 → 기준 날짜)" : ""}`).join(" · ")}
+            </p>
+          )}
+          <label>
+            주차 목록 반 선택
+            <select value={classId} onChange={(e) => pickClass(e.target.value)}>
+              <option value="">반을 선택하세요</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {classId && (
+            <table>
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>등록일</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weeks.map((w) => (
+                  <tr key={w.id}>
+                    <td>{w.label || w.test_date}</td>
+                    <td>{w.created_at?.slice(0, 10) ?? ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {classId && !weeks.length && !busy && <p>등록된 주차가 없습니다.</p>}
+          <p>주차 삭제는 점수까지 지워지므로 아직 score-system에서 합니다.</p>
+        </>
+      ) : mode === "classes" ? (
         <>
           <table>
             <thead>
