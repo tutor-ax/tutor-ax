@@ -8,7 +8,9 @@ for (const width of [390, 1440])
       requests: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("request", (r) => {
-      if (["fetch", "xhr"].includes(r.resourceType())) requests.push(r.url());
+      // The live score panel on the first tab checks the admin session (GET); anything else would leave the demo.
+      if (["fetch", "xhr"].includes(r.resourceType()) && !(r.method() === "GET" && r.url().endsWith("/api/admin/roster/classes")))
+        requests.push(`${r.method()} ${r.url()}`);
     });
     await page.goto(
       process.env.PAGES_BUILD === "true" ? "/tutor-ax/admin/" : "/admin/",
